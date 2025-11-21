@@ -1,16 +1,19 @@
 package main
 
 import (
-	"backend/config"
-	"fmt"
+	"log"
+
+	"backend/app"
 )
 
 func main() {
-	db, err := config.InitDB()
+	application, err := app.NewApp()
 	if err != nil {
-		fmt.Println("gagal coy:", err)
-		return
+		log.Fatalf("Gagal start app: %v", err)
 	}
 
-	fmt.Println("berhasilll", db)
+	// Start Server
+	if err := application.Router.Run(":8080"); err != nil {
+		log.Fatalf("Gagal menjalankan server: %v", err)
+	}
 }
