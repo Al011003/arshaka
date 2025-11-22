@@ -49,7 +49,7 @@ func (r RegisterRequest) Validate() error {
 			),
 			validation.Field(
 				&r.AngkatanKampus,
-				validation.Required.Error("angkatan kampus wajib diisi untuk anggota"),
+				validation.Required.Error("angkatan kampus wajib diisi untuk anggota"),validation.Min(22).Error("angkatan tertua adalah 22"),
 			),
 			validation.Field(
 				&r.NIM,
