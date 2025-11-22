@@ -5,14 +5,12 @@ import (
 	"gorm.io/gorm"
 
 	"backend/config"
-	authhandler "backend/handler/auth"
-	datahandler "backend/handler/masterdata"
+	handler "backend/handler/auth"
 	"backend/model"
 	"backend/repo"
 	"backend/routes"
 
 	authUC "backend/usecase/auth"
-	dataUC "backend/usecase/masterdata"
 	"backend/utils"
 )
 
@@ -32,40 +30,25 @@ func NewApp() (*App, error) {
 	db := config.InitDB()
 
 	// Auto migrate models
-	if err := db.AutoMigrate(&model.User{}, &model.Fakultas{}, &model.Jurusan{}, &model.AngkatanMapala{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}); err != nil {
 		return nil, err
 	}
 
 	// Init Repos
 	authRepo := repo.NewAuthRepository(db)
-	jurusanRepo := repo.NewJurusanRepo(db)
-	fakultasRepo := repo.NewFakultasRepo(db)
-	angaktanMapalaRepo := repo.NewAngkatanMapalaRepo(db)
 
 	// Init Usecases
-	registerUC := authUC.NewRegisterUsecase(authRepo, fakultasRepo, jurusanRepo, angaktanMapalaRepo)
+	registerUC := authUC.NewRegisterUsecase(authRepo)
 	loginUC := authUC.NewLoginUsecase(authRepo)
-	fakultasUC := dataUC.NewFakultasUsecase(fakultasRepo)
-	jurusanUC := dataUC.NewJurusanUsecase(jurusanRepo, fakultasRepo)
-	angkatanMapalaUC := dataUC.NewAngkatanMapalaUsecase(angaktanMapalaRepo)
 
 	// Init Handlers
-	registerHandler := authhandler.NewRegisterHandler(registerUC)
-	loginHandler := authhandler.NewLoginHandler(loginUC)
-	fakultasHandler := datahandler.NewFakultasHandler(fakultasUC)
-	jurusanHandler := datahandler.NewJurusanHandler(jurusanUC)
-	angkatanMapalaHandler := datahandler.NewAngkatanMapalaHandler(angkatanMapalaUC)
-
-
-
+	registerHandler := handler.NewRegisterHandler(registerUC)
+	loginHandler := handler.NewLoginHandler(loginUC)
 
 	// Init Router + Inject handlers
 	r := routes.SetupRouter(
 		registerHandler,
 		loginHandler,
-		fakultasHandler,
-		jurusanHandler,
-		angkatanMapalaHandler,
 	)
 
 	return &App{
