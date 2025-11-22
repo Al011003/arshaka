@@ -36,32 +36,28 @@ func JWTAuth() gin.HandlerFunc {
 
 // UserOnly middleware: hanya user
 func UserOnly() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        role := c.GetString("role")
-
-        if role != "user" && role != "admin" && role != "superadmin" {
-            c.JSON(403, gin.H{"error": "forbidden"})
-            c.Abort()
-            return
-        }
-
-        c.Next()
-    }
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "user" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User access only"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
 
 // AdminOnly middleware: hanya admin
 func AdminOnly() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        role := c.GetString("role")
-
-        if role != "admin" && role != "superadmin" {
-            c.JSON(403, gin.H{"error": "forbidden"})
-            c.Abort()
-            return
-        }
-
-        c.Next()
-    }
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access only"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
 
 // SuperAdminOnly middleware: hanya superadmin
