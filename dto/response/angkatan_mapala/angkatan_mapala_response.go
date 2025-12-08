@@ -1,4 +1,4 @@
-package data
+package angkatan
 
 type AngkatanMapalaResponse struct {
 	ID   uint   `json:"id"`

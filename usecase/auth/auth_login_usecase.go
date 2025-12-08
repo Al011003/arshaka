@@ -62,6 +62,8 @@ func (u *loginUsecase) Login(req req.LoginRequest) (*res.LoginResponse, error) {
 		AccessToken:       accessToken,
 		RefreshToken:      refreshToken,
 		MustChangePassword: user.IsDefaultPassword,
+		MustFillEmail: user.IsEmailNull,
+		Role: user.Role,
 	}
 
 	return resp, nil

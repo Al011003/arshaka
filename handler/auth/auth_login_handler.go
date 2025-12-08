@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	req "backend/dto/request/auth"
-	res "backend/dto/response"
+	res "backend/dto/response/common"
 	usecase "backend/usecase/auth"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,10 +24,12 @@ func NewLoginHandler(a usecase.LoginUsecase) *LoginHandler {
 // LOGIN HANDLER
 func (h *LoginHandler) Login(c *gin.Context) {
 	var request req.LoginRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "payload tidak valid",
+	
+
+	if err := request.BindAndValidate(c); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -40,9 +43,5 @@ func (h *LoginHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "login berhasil",
-		Data:    resp,
-	})
+	utils.Success(c, resp, "login berhasil")
 }

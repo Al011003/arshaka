@@ -20,6 +20,11 @@ type User struct {
 	Role           string         `json:"role"`                // "superadmin", "admin", "user"
 	Status string `gorm:"type:enum('aktif','lulus','keluar');default:'aktif'" json:"status"`
 
+
+	Email        *string `gorm:"unique;default:null" json:"email"` // nullable + unique
+	IsEmailNull  bool    `gorm:"default:true" json:"is_email_null"`
+
+
 	Password       string         `json:"-"`   
 	IsDefaultPassword bool 			`json:"-"`               
 	FotoURL        string         `json:"foto_url"`            

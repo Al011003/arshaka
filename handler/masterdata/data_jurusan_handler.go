@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	req "backend/dto/request/masterdata"
-	"backend/dto/response"
+	res "backend/dto/response/common"
 	usecase "backend/usecase/masterdata"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +25,7 @@ func NewJurusanHandler(u usecase.JurusanUsecase) *JurusanHandler {
 func (h *JurusanHandler) CreateJurusan(c *gin.Context) {
 	var request req.JurusanRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -34,14 +34,14 @@ func (h *JurusanHandler) CreateJurusan(c *gin.Context) {
 
 	resp, err := h.jurusanUsecase.Create(request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "jurusan berhasil dibuat",
 		Data:    resp,
@@ -52,7 +52,7 @@ func (h *JurusanHandler) CreateJurusan(c *gin.Context) {
 func (h *JurusanHandler) GetAllJurusan(c *gin.Context) {
 	resp, err := h.jurusanUsecase.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -61,7 +61,7 @@ func (h *JurusanHandler) GetAllJurusan(c *gin.Context) {
 
 	// jika data kosong
 	if len(resp) == 0 {
-		c.JSON(http.StatusOK, response.BaseResponse{
+		c.JSON(http.StatusOK, res.BaseResponse{
 			Status:  "success",
 			Message: "data jurusan kosong",
 			Data:    []interface{}{}, // array kosong
@@ -69,7 +69,7 @@ func (h *JurusanHandler) GetAllJurusan(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil mengambil data jurusan",
 		Data:    resp,
@@ -80,7 +80,7 @@ func (h *JurusanHandler) GetAllJurusan(c *gin.Context) {
 func (h *JurusanHandler) UpdateJurusan(c *gin.Context) {
 	var request req.JurusanRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -90,7 +90,7 @@ func (h *JurusanHandler) UpdateJurusan(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "invalid ID",
 		})
@@ -99,14 +99,14 @@ func (h *JurusanHandler) UpdateJurusan(c *gin.Context) {
 
 	resp, err := h.jurusanUsecase.Update(uint(id), request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "jurusan berhasil diupdate",
 		Data:    resp,
@@ -118,7 +118,7 @@ func (h *JurusanHandler) DeleteJurusan(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "invalid ID",
 		})
@@ -126,14 +126,14 @@ func (h *JurusanHandler) DeleteJurusan(c *gin.Context) {
 	}
 
 	if err := h.jurusanUsecase.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "jurusan berhasil dihapus",
 	})
@@ -144,7 +144,7 @@ func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
 	fakultasIDParam := c.Param("fakultas_id")
 	fakultasID, err := strconv.Atoi(fakultasIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "invalid fakultas ID",
 		})
@@ -153,7 +153,7 @@ func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
 
 	resp, err := h.jurusanUsecase.GetByFakultas(uint(fakultasID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -161,7 +161,7 @@ func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
 	}
 
 	if len(resp) == 0 {
-		c.JSON(http.StatusOK, response.BaseResponse{
+		c.JSON(http.StatusOK, res.BaseResponse{
 			Status:  "success",
 			Message: "jurusan tidak ditemukan untuk fakultas ini",
 			Data:    []interface{}{},
@@ -169,7 +169,7 @@ func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil mengambil data jurusan",
 		Data:    resp,
