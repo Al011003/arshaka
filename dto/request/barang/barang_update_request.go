@@ -16,17 +16,16 @@ type UpdateBarangRequest struct {
 	Kategori  *string  `json:"kategori,omitempty"`
 	StokTotal *int     `json:"stok_total,omitempty"`
 	StokSisa  *int     `json:"stok_sisa,omitempty"`
+	Status    *string  `json:"status,omitempty"` // ← TAMBAH INI
 	TahunBeli *int     `json:"tahun_beli,omitempty"`
 	HargaBeli *float64 `json:"harga_beli,omitempty"`
 }
 
 func (r *UpdateBarangRequest) BindAndValidate(c *gin.Context) error {
-	// Bind JSON ke struct
 	if err := c.ShouldBindJSON(r); err != nil {
 		return errors.New("payload tidak valid")
 	}
 
-	// Validasi dengan ozzo-validation (hanya field yang ada)
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Kode,
 			validation.Length(1, 50).Error("kode harus 1-50 karakter"),
@@ -46,6 +45,10 @@ func (r *UpdateBarangRequest) BindAndValidate(c *gin.Context) error {
 		validation.Field(&r.StokSisa,
 			validation.Min(0).Error("stok sisa tidak boleh negatif"),
 		),
+		validation.Field(&r.Status, // ← VALIDASI STATUS
+			validation.In("tersedia", "habis", "nonaktif").
+				Error("status harus: tersedia, habis, nonaktif"),
+		),
 		validation.Field(&r.TahunBeli,
 			validation.Min(0).Error("tahun beli tidak valid"),
 		),
@@ -55,10 +58,10 @@ func (r *UpdateBarangRequest) BindAndValidate(c *gin.Context) error {
 	)
 }
 
-// HasUpdates - cek apakah ada field yang diupdate
 func (r *UpdateBarangRequest) HasUpdates() bool {
 	return r.Kode != nil || r.Nama != nil || r.Merk != nil ||
 		r.Deskripsi != nil || r.Kategori != nil ||
 		r.StokTotal != nil || r.StokSisa != nil ||
+		r.Status != nil || // ← TAMBAH INI
 		r.TahunBeli != nil || r.HargaBeli != nil
 }
