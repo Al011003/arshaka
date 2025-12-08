@@ -1,9 +1,9 @@
 package handler
 
 import (
-	req "backend/dto/request/masterdata"
-	"backend/dto/response"
-	usecase "backend/usecase/masterdata"
+	req "backend/dto/request/angkatan_mapala"
+	res "backend/dto/response/common"
+	usecase "backend/usecase/angkatan_mapala"
 	"net/http"
 	"strconv"
 
@@ -25,7 +25,7 @@ func (h *AngkatanMapalaHandler) Create(c *gin.Context) {
 	var request req.AngkatanMapalaRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -34,14 +34,14 @@ func (h *AngkatanMapalaHandler) Create(c *gin.Context) {
 
 	data, err := h.uc.Create(request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.BaseResponse{
+	c.JSON(http.StatusCreated, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil membuat angkatan mapala",
 		Data:    data,
@@ -52,7 +52,7 @@ func (h *AngkatanMapalaHandler) Create(c *gin.Context) {
 func (h *AngkatanMapalaHandler) GetAll(c *gin.Context) {
 	data, err := h.uc.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -61,7 +61,7 @@ func (h *AngkatanMapalaHandler) GetAll(c *gin.Context) {
 
 	// Jika data kosong
 	if len(data) == 0 {
-		c.JSON(http.StatusOK, response.BaseResponse{
+		c.JSON(http.StatusOK, res.BaseResponse{
 			Status:  "success",
 			Message: "data kosong",
 			Data:    []interface{}{}, // supaya FE tidak error
@@ -69,7 +69,7 @@ func (h *AngkatanMapalaHandler) GetAll(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil mengambil data",
 		Data:    data,
@@ -80,7 +80,7 @@ func (h *AngkatanMapalaHandler) Update(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "id tidak valid",
 		})
@@ -89,7 +89,7 @@ func (h *AngkatanMapalaHandler) Update(c *gin.Context) {
 
 	var request req.AngkatanMapalaRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -98,14 +98,14 @@ func (h *AngkatanMapalaHandler) Update(c *gin.Context) {
 
 	data, err := h.uc.Update(uint(id), request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil update angkatan mapala",
 		Data:    data,
@@ -117,7 +117,7 @@ func (h *AngkatanMapalaHandler) Delete(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "id tidak valid",
 		})
@@ -125,14 +125,14 @@ func (h *AngkatanMapalaHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.uc.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil dihapus",
 	})

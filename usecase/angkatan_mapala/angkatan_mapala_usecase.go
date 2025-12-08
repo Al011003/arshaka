@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	req "backend/dto/request/masterdata"
-	res "backend/dto/response/masterdata"
+	req "backend/dto/request/angkatan_mapala"
+	res "backend/dto/response/angkatan_mapala"
 	"backend/model"
 	"backend/repo"
 	"errors"

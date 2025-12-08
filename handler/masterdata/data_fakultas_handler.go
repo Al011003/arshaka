@@ -2,7 +2,7 @@ package handler
 
 import (
 	req "backend/dto/request/masterdata"
-	"backend/dto/response"
+	res "backend/dto/response/common"
 	usecase "backend/usecase/masterdata"
 	"net/http"
 	"strconv"
@@ -25,7 +25,7 @@ func (h *FakultasHandler) CreateFakultas(c *gin.Context) {
 	var request req.FakultasRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -34,14 +34,14 @@ func (h *FakultasHandler) CreateFakultas(c *gin.Context) {
 
 	resp, err := h.fakultasUsecase.Create(request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.BaseResponse{
+	c.JSON(http.StatusCreated, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil membuat fakultas",
 		Data:    resp,
@@ -52,7 +52,7 @@ func (h *FakultasHandler) CreateFakultas(c *gin.Context) {
 func (h *FakultasHandler) GetAllFakultas(c *gin.Context) {
 	resp, err := h.fakultasUsecase.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.BaseResponse{
+		c.JSON(http.StatusInternalServerError, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -61,7 +61,7 @@ func (h *FakultasHandler) GetAllFakultas(c *gin.Context) {
 
 	// jika data kosong
 	if len(resp) == 0 {
-		c.JSON(http.StatusOK, response.BaseResponse{
+		c.JSON(http.StatusOK, res.BaseResponse{
 			Status:  "success",
 			Message: "data kosong",
 			Data:    []interface{}{},
@@ -69,7 +69,7 @@ func (h *FakultasHandler) GetAllFakultas(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil mengambil data",
 		Data:    resp,
@@ -81,7 +81,7 @@ func (h *FakultasHandler) UpdateFakultas(c *gin.Context) {
 	var request req.FakultasRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -91,7 +91,7 @@ func (h *FakultasHandler) UpdateFakultas(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "invalid ID",
 		})
@@ -100,14 +100,14 @@ func (h *FakultasHandler) UpdateFakultas(c *gin.Context) {
 
 	resp, err := h.fakultasUsecase.Update(uint(id), request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil update fakultas",
 		Data:    resp,
@@ -119,7 +119,7 @@ func (h *FakultasHandler) DeleteFakultas(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: "invalid ID",
 		})
@@ -127,14 +127,14 @@ func (h *FakultasHandler) DeleteFakultas(c *gin.Context) {
 	}
 
 	if err := h.fakultasUsecase.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response.BaseResponse{
+	c.JSON(http.StatusOK, res.BaseResponse{
 		Status:  "success",
 		Message: "berhasil dihapus",
 	})
