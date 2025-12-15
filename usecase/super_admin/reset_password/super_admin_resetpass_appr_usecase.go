@@ -14,6 +14,7 @@ import (
 type SuperAdminAccResetPasswordUsecase interface {
 	Approve(resetID uint, adminID uint) error
 	GetAllRequestsFiltered(status string) ([]model.PasswordResetRequest, error)
+	CancelResetByIdentity(resetID uint, adminID uint) error
 }
 
 type superAdminAccResetPasswordUsecase struct {
@@ -78,4 +79,23 @@ func (uc *superAdminAccResetPasswordUsecase) GetAllRequestsFiltered(status strin
 		return nil, fmt.Errorf("gagal mengambil data reset request: %w", err)
 	}
 	return reqs, nil
+}
+
+func (uc *superAdminAccResetPasswordUsecase) CancelResetByIdentity(resetID uint, adminID uint) error {
+	req, err := uc.resetRepo.GetByID(resetID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("request tidak ditemukan")
+		}
+		return fmt.Errorf("gagal mengambil data request: %w", err)
+	}
+
+	if req.Status != "pending" {
+		return errors.New("request ini sudah tidak pending")
+	}
+		if err := uc.resetRepo.CancelRequest(resetID, adminID, time.Now()); err != nil {
+		return fmt.Errorf("gagal meng-cancelrequest: %w", err)
+	}
+
+	return nil
 }

@@ -53,6 +53,8 @@ func SetupRouter(
 	auth.POST("/login", loginHandler.Login)
 	auth.POST("/forgot-password", userResetPasswordHandler.RequestOTP)
 	auth.POST("/forgot-password/change", userResetPasswordHandler.ResetPassword)
+		adminResetPassword := auth.Group("/admin-reset")
+			adminResetPassword.POST("/", adminResetPassHandler.RequestForgotPassword)
 	mainRoute := r.Group("/api")
 	mainRoute.Use(middleware.JWTAuth())
 	
@@ -79,9 +81,7 @@ func SetupRouter(
     	adminRoute.POST("/register-user", registerHandler.RegisterUser)
 		adminRoute.POST("/password", changePasswordHandler.UpdatePassword)
 	
-		resetPassword := adminRoute.Group("/reset-password")
-			resetPassword.POST("/", adminResetPassHandler.RequestForgotPassword)
-			resetPassword.POST("/delete", adminResetPassHandler.CancelForgotPassword)
+
 
 		fakultas := adminRoute.Group("/fakultas")
 			fakultas.POST("/", fakultasHandler.CreateFakultas)
@@ -140,6 +140,7 @@ func SetupRouter(
 	resetPassRoute := superAdminRoute.Group("/reset-password")
 			resetPassRoute.GET("/", superAdminAccResetHandler.GetAllRequests)
 			resetPassRoute.POST("/approve/:resetID", superAdminAccResetHandler.ApproveReset)
+			resetPassRoute.POST("/cancel/:resetID", superAdminAccResetHandler.CancelReset)
 	
 
 	

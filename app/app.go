@@ -126,7 +126,7 @@ func NewApp() (*App, error) {
 
 	//admin
 	adminHandler := adminhandler.NewAdminUpdateHandler(adminSelfUC, adminUpdateUC)
-	adminResetPassHandler := adminhandler.NewUserForgotPasswordHandler(adminResetPassUC)
+	adminResetPassHandler := adminhandler.NewAdminForgotPasswordHandler(adminResetPassUC)
 	//superadmin
 	superAdminUpdateHandler := superadminhandler.NewSuperAdminSelfUpdateHandler(superAdminUpdateUC)
 	superAdminProfileHandler := superadminhandler.NewSuperAdminProfileHandler(superAdminProfileUC)
@@ -176,9 +176,6 @@ func NewApp() (*App, error) {
 		deviceTokenhandler,
 		barangCrudHandler,
 		barangPhotoHandler,
-		
-		
-		
 	)
 
 	return &App{

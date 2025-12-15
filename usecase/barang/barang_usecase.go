@@ -155,17 +155,10 @@ func (u *barangUseCase) GetByID(id uint, role string) (interface{}, error) {
 func (u *barangUseCase) GetAll(filter requestBarang.BarangFilter, role string) ([]responseBarang.BarangListResponse, *response.Pagination, error) {
 
     if role != "admin" && role != "superadmin" {
-
-        // user biasa --> kalau user memasukkan status manual tetap override
         if filter.Status == "" {
             filter.Status = "tersedia,habis"
         }
-
-    } else {
-        // admin / superadmin --> JANGAN hapus status kalau user pakai filter!
-        // cuma kalau user tidak set status, biarkan kosong (ambil semua)
-        // jadi ga usah apa2
-    }
+    } else {}
 
     barangs, pagination, err := u.barangRepo.FindAll(filter)
     if err != nil {

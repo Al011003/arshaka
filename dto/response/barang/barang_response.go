@@ -45,3 +45,4 @@ type BarangUserDetailResponse struct {
 	CoverURL  string `json:"cover_url"`
 	Status string `json:"status"`
 }
+
