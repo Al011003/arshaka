@@ -4,6 +4,7 @@ import (
 	AdminHandler "backend/handler/admin"
 	AngkatanMapalaHandler "backend/handler/angkatan_mapala"
 	AuthHandler "backend/handler/auth"
+	BarangHandler "backend/handler/barang"
 	DeviceHandler "backend/handler/device_token"
 	DataHandler "backend/handler/masterdata"
 	superAdminHandler "backend/handler/superadmin"
@@ -40,6 +41,9 @@ func SetupRouter(
 	adminGetDetailUserHandler *AdminHandler.AdminGetUserHandler,
 	adminResetPassHandler *AdminHandler.AdminForgotPasswordHandler,
 	deviceTokenhandler *DeviceHandler.DeviceTokenHandler,
+
+	barangCrudHandler *BarangHandler.BarangHandler,
+	barangPhotoHandler *BarangHandler.BarangPhotoHandler,
 	
 
 ) *gin.Engine {
@@ -49,24 +53,25 @@ func SetupRouter(
 	auth.POST("/login", loginHandler.Login)
 	auth.POST("/forgot-password", userResetPasswordHandler.RequestOTP)
 	auth.POST("/forgot-password/change", userResetPasswordHandler.ResetPassword)
+		adminResetPassword := auth.Group("/admin-reset")
+			adminResetPassword.POST("/", adminResetPassHandler.RequestForgotPassword)
 	mainRoute := r.Group("/api")
 	mainRoute.Use(middleware.JWTAuth())
 	
 	userRoute := mainRoute.Group("/user")
 	userRoute.Use(middleware.UserOnly())
-	userUpdateRoute := userRoute.Group("/update")
-		userUpdateRoute.PUT("/", userUpdateHandler.UpdateSelf)
-		userPhotoRoute := userUpdateRoute.Group("/photo")
-			userPhotoRoute.POST("/upload", userPhotoPicHandler.UpdatePhoto)
-			userPhotoRoute.DELETE("/delete", userPhotoPicHandler.DeletePhoto)
-
-
-
-
+		userUpdateRoute := userRoute.Group("/update")
+			userUpdateRoute.PUT("/", userUpdateHandler.UpdateSelf)
+			userPhotoRoute := userUpdateRoute.Group("/photo")
+				userPhotoRoute.POST("/upload", userPhotoPicHandler.UpdatePhoto)
+				userPhotoRoute.DELETE("/delete", userPhotoPicHandler.DeletePhoto)
 	userRoute.GET("/profile", userProfileHandelr.GetProfile)
 	userRoute.POST("/device-token", deviceTokenhandler.Save)
 	userRoute.POST("/password", changePasswordHandler.UpdatePassword)
 	userRoute.POST("/email", userChangeEmailHandler.UpdateEmail)
+	barangU := userRoute.Group("/barang")
+		barangU.GET("/", barangCrudHandler.GetAll)
+		barangU.GET("/:id", barangCrudHandler.GetByID)
 	
     
 	
@@ -76,9 +81,7 @@ func SetupRouter(
     	adminRoute.POST("/register-user", registerHandler.RegisterUser)
 		adminRoute.POST("/password", changePasswordHandler.UpdatePassword)
 	
-		resetPassword := adminRoute.Group("/reset-password")
-			resetPassword.POST("/", adminResetPassHandler.RequestForgotPassword)
-			resetPassword.POST("/delete", adminResetPassHandler.CancelForgotPassword)
+
 
 		fakultas := adminRoute.Group("/fakultas")
 			fakultas.POST("/", fakultasHandler.CreateFakultas)
@@ -107,6 +110,18 @@ func SetupRouter(
 			user.GET("/", adminGetAllUserHandler.GetUsers)
 			user.GET("/:id", adminGetDetailUserHandler.GetDetailUser)
 		
+		barang := adminRoute.Group("/barang")
+			// CRUD Barang
+			barang.POST("", barangCrudHandler.Create)           // POST /admin/barang
+			barang.GET("", barangCrudHandler.GetAll)            // GET /admin/barang
+			barang.GET("/:id", barangCrudHandler.GetByID)       // GET /admin/barang/:id
+			barang.PUT("/:id", barangCrudHandler.Update)        // PUT /admin/barang/:id
+			barang.DELETE("/:id", barangCrudHandler.Delete)     // DELETE /admin/barang/:id
+			// Photo Management
+			barang.POST("/:id/photo", barangPhotoHandler.UpdatePhoto)     // POST /admin/barang/:id/photo
+			barang.DELETE("/:id/photo", barangPhotoHandler.DeletePhoto)   // DELETE /admin/barang/:id/photo
+
+		
 
 	superAdminRoute := mainRoute.Group("/super-admin")
 	superAdminRoute.Use(middleware.SuperAdminOnly())
@@ -125,6 +140,7 @@ func SetupRouter(
 	resetPassRoute := superAdminRoute.Group("/reset-password")
 			resetPassRoute.GET("/", superAdminAccResetHandler.GetAllRequests)
 			resetPassRoute.POST("/approve/:resetID", superAdminAccResetHandler.ApproveReset)
+			resetPassRoute.POST("/cancel/:resetID", superAdminAccResetHandler.CancelReset)
 	
 
 	

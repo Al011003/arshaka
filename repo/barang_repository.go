@@ -6,6 +6,7 @@ import (
 	response "backend/dto/response/common"
 	"backend/model"
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -70,76 +71,74 @@ func (r *barangRepository) FindByKode(kode string) (*model.Barang, error) {
 
 // FindAll - mengambil semua barang dengan filter dan pagination
 func (r *barangRepository) FindAll(filter barang.BarangFilter) ([]model.Barang, *response.Pagination, error) {
-    var barangs []model.Barang
-    var total int64
-    
-    // Set default values
-    if filter.Page < 1 {
-        filter.Page = 1
-    }
-    if filter.Limit < 1 {
-        filter.Limit = 10
-    }
-    if filter.SortBy == "" {
-        filter.SortBy = "created_at"
-    }
-    if filter.SortOrder == "" {
-        filter.SortOrder = "desc"
-    }
-    
-    offset := (filter.Page - 1) * filter.Limit
-    
-    // Build query
-    query := r.db.Model(&model.Barang{})
-    
-    // Apply filters
-    if filter.Keyword != "" {
-        searchPattern := "%" + filter.Keyword + "%"
-        query = query.Where(
-            "nama LIKE ? OR merk LIKE ? OR kode LIKE ? OR deskripsi LIKE ?",
-            searchPattern, searchPattern, searchPattern, searchPattern,
-        )
-    }
-    
-    if filter.Kategori != "" {
-        query = query.Where("kategori = ?", filter.Kategori)
-    }
-    
-    if filter.Tersedia != nil {
-        if *filter.Tersedia {
-            query = query.Where("stok_sisa > 0")
-        } else {
-            query = query.Where("stok_sisa = 0")
-        }
-    }
-    
-    // Count total records
-    if err := query.Count(&total).Error; err != nil {
-        return nil, nil, err
-    }
-    
-    // Get paginated data with sorting
-    orderClause := filter.SortBy + " " + filter.SortOrder
-    err := query.Offset(offset).Limit(filter.Limit).Order(orderClause).Find(&barangs).Error
-    if err != nil {
-        return nil, nil, err
-    }
-    
-    // Calculate total pages
-    totalPages := int(total) / filter.Limit
-    if int(total)%filter.Limit > 0 {
-        totalPages++
-    }
-    
-    // Build pagination response
-    pagination := &response.Pagination{
-        Page:       filter.Page,
-        Limit:      filter.Limit,
-        TotalRows:  int(total),
-        TotalPages: totalPages,
-    }
-    
-    return barangs, pagination, nil
+	var barangs []model.Barang
+	var total int64
+
+	// Default values
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	if filter.Limit < 1 {
+		filter.Limit = 10
+	}
+	if filter.SortBy == "" {
+		filter.SortBy = "created_at"
+	}
+	if filter.SortOrder == "" {
+		filter.SortOrder = "desc"
+	}
+
+	offset := (filter.Page - 1) * filter.Limit
+
+	// Build base query
+	query := r.db.Model(&model.Barang{})
+
+	// Apply keyword search
+	if filter.Keyword != "" {
+		searchPattern := "%" + filter.Keyword + "%"
+		query = query.Where(
+			"nama LIKE ? OR merk LIKE ? OR kode LIKE ? OR deskripsi LIKE ?",
+			searchPattern, searchPattern, searchPattern, searchPattern,
+		)
+	}
+
+	// Filter kategori
+	if filter.Kategori != "" {
+		query = query.Where("kategori = ?", filter.Kategori)
+	}
+
+	// Filter by multiple status
+	if filter.Status != "" {
+		statuses := strings.Split(filter.Status, ",")
+		query = query.Where("status IN ?", statuses)
+	}
+
+	// Count total records
+	if err := query.Count(&total).Error; err != nil {
+		return nil, nil, err
+	}
+
+	// Fetch paginated data with sorting
+	orderClause := filter.SortBy + " " + filter.SortOrder
+	if err := query.Offset(offset).Limit(filter.Limit).Order(orderClause).Find(&barangs).Error; err != nil {
+		return nil, nil, err
+	}
+
+	// Calculate total pages
+	totalPages := int(total) / filter.Limit
+	if int(total)%filter.Limit > 0 {
+		totalPages++
+	}
+
+	// Build pagination response
+	pagination := &response.Pagination{
+		Page:       filter.Page,
+		Limit:      filter.Limit,
+		TotalRows:  int(total),
+		TotalPages: totalPages,
+	}
+
+	return barangs, pagination, nil
 }
 
 // Update - update data barang

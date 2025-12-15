@@ -71,7 +71,6 @@ type AdminUpdateUserRequest struct {
 	NoHP           string `json:"no_hp,omitempty"`
 	Status string `json:"status,omitempty"`
 	FotoURL        string `json:"foto_url,omitempty"`
-	Password       string `json:"password,omitempty"`
 }
 
 func (r *AdminUpdateUserRequest) BindandValidate(c *gin.Context) error {

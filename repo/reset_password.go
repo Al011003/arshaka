@@ -10,12 +10,10 @@ import (
 type PasswordResetRepo interface {
 	Create(userID uint) error
 	GetPendingByUserID(userID uint) (*model.PasswordResetRequest, error)
-	CancelRequest(requestID uint, canceledAt time.Time) error
+	CancelRequest(requestID uint, adminID uint, canceledAt time.Time) error
 	ApproveRequest(requestID uint, adminID uint, approvedAt time.Time) error
 	GetAllFiltered(status string) ([]model.PasswordResetRequest, error)
 	GetByID(id uint) (*model.PasswordResetRequest, error)
-
-
 }
 
 type passwordResetRepo struct {
@@ -45,7 +43,7 @@ func (r *passwordResetRepo) GetPendingByUserID(userID uint) (*model.PasswordRese
 	return &req, nil
 }
 
-func (r *passwordResetRepo) CancelRequest(requestID uint, canceledAt time.Time) error {
+func (r *passwordResetRepo) CancelRequest(requestID uint, adminID uint, canceledAt time.Time) error {
 	return r.DB.Model(&model.PasswordResetRequest{}).
 		Where("id = ?", requestID).
 		Updates(map[string]interface{}{

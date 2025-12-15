@@ -23,7 +23,7 @@ type UserRepo interface {
     UpdateEmail(ctx context.Context, userID uint, email string) error
     ResetPassword(userID uint, newPassword string, mustChange bool) error
     UpdateProfilePhoto(userID uint, photoURL string) error
-
+    FindByNRAAndName(nra string, nama string) (*model.User, error)
 }
 
 type UserRepoDB struct {
@@ -191,4 +191,18 @@ func (r *UserRepoDB) UpdateProfilePhoto(userID uint, photoURL string) error {
         Where("id = ?", userID).
         Update("foto_url", photoURL).
         Error
+}
+
+func (r *UserRepoDB) FindByNRAAndName(nra string, nama string) (*model.User, error) {
+	var user model.User
+
+	err := r.db.
+		Where("nra = ? AND nama LIKE ?", nra, "%"+nama+"%").
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

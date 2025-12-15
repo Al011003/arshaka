@@ -21,9 +21,6 @@ func NewAdminResetPasswordHandler(uc usecase.SuperAdminAccResetPasswordUsecase) 
 // POST /admin/reset-password/approve/:userID
 // ======================================================
 func (h *SuperAdminResetPasswordHandler) ApproveReset(c *gin.Context) {
-	// --------------------------------------------------
-	// 1. Ambil adminID dari JWT
-	// --------------------------------------------------
 	idRaw, exists := c.Get("user_id")
 	if !exists {
 		utils.Unauthorized(c, "unauthorized")
@@ -31,10 +28,6 @@ func (h *SuperAdminResetPasswordHandler) ApproveReset(c *gin.Context) {
 	}
 
 	AdminID := idRaw.(uint)
-
-	// --------------------------------------------------
-	// 2. Ambil userID dari param
-	// --------------------------------------------------
 	resetIDParam := c.Param("resetID")
 	resetIDUint64, err := strconv.ParseUint(resetIDParam, 10, 64)
 	if err != nil {
@@ -43,20 +36,36 @@ func (h *SuperAdminResetPasswordHandler) ApproveReset(c *gin.Context) {
 	}
 
 	resetID := uint(resetIDUint64)
-
-	// --------------------------------------------------
-	// 3. Panggil usecase
-	// --------------------------------------------------
 	err = h.uc.Approve(resetID, AdminID)
 	if err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
-
-	// --------------------------------------------------
-	// 4. Response sukses
-	// --------------------------------------------------
 	utils.Success(c, nil, "Reset password berhasil disetujui. Password user telah direset.")
+}
+
+func (h *SuperAdminResetPasswordHandler)CancelReset(c *gin.Context) {
+	idRaw, exists := c.Get("user_id")
+	if !exists {
+		utils.Unauthorized(c, "unauthorized")
+		return
+	}
+
+	AdminID := idRaw.(uint)
+	resetIDParam := c.Param("resetID")
+	resetIDUint64, err := strconv.ParseUint(resetIDParam, 10, 64)
+	if err != nil {
+		utils.BadRequest(c, "resetID tidak valid")
+		return
+	}
+
+	resetID := uint(resetIDUint64)
+	err = h.uc.CancelResetByIdentity(resetID, AdminID)
+	if err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+	utils.Success(c, nil, "Reset password tidak disetujui. Password user tidak berubah.")
 }
 
 func (h *SuperAdminResetPasswordHandler) GetAllRequests(c *gin.Context) {

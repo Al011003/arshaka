@@ -26,3 +26,5 @@ func (r *UpdateEmailRequest) BindAndValidate(c *gin.Context) error {
 		),
 	)
 }
+
+

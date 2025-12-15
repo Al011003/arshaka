@@ -10,6 +10,7 @@ import (
 	adminhandler "backend/handler/admin"
 	angkatanmapalahandler "backend/handler/angkatan_mapala"
 	authhandler "backend/handler/auth"
+	baranghandler "backend/handler/barang"
 	devicehandler "backend/handler/device_token"
 	datahandler "backend/handler/masterdata"
 	superadminhandler "backend/handler/superadmin"
@@ -28,6 +29,7 @@ import (
 	deviceUC "backend/usecase/device_token"
 	dataUC "backend/usecase/masterdata"
 
+	barangUC "backend/usecase/barang"
 	superAdminDeleteUC "backend/usecase/super_admin/delete"
 	superAdminGPUC "backend/usecase/super_admin/getprofile"
 	superAdminUpdateUC "backend/usecase/super_admin/update"
@@ -67,6 +69,7 @@ func NewApp() (*App, error) {
 	deviceRepo := repo.NewDeviceTokenRepo(db)
 	PasswordResetRepo := repo.NewPasswordResetRepo(db)
 	PasswordResetRepository := repo.NewPasswordResetRepository(db)
+	barangRepo := repo.NewBarangRepository(db)
 
 	// Init Usecases
 	//autj
@@ -99,6 +102,9 @@ func NewApp() (*App, error) {
 	superAdminDeleteUserUC := superAdminDeleteUC.NewSuperAdminDeleteUserUsecase(userRepo)
 	//device
 	deviceTokenUC := deviceUC.NewSaveDeviceTokenUC(deviceRepo)
+	//barang
+	barangCrudUC := barangUC.NewBarangUseCase(barangRepo)
+	barangPhotoUC := barangUC.NewBarangPhotoUsecase(barangRepo)
 
 
 
@@ -120,7 +126,7 @@ func NewApp() (*App, error) {
 
 	//admin
 	adminHandler := adminhandler.NewAdminUpdateHandler(adminSelfUC, adminUpdateUC)
-	adminResetPassHandler := adminhandler.NewUserForgotPasswordHandler(adminResetPassUC)
+	adminResetPassHandler := adminhandler.NewAdminForgotPasswordHandler(adminResetPassUC)
 	//superadmin
 	superAdminUpdateHandler := superadminhandler.NewSuperAdminSelfUpdateHandler(superAdminUpdateUC)
 	superAdminProfileHandler := superadminhandler.NewSuperAdminProfileHandler(superAdminProfileUC)
@@ -133,6 +139,9 @@ func NewApp() (*App, error) {
 	adminGetDetailUserHandler := adminhandler.NewAdminGetUserHandler(adminGetDetailUserUC)
 	//device
 	deviceTokenhandler:= devicehandler.NewDeviceTokenHandler(deviceTokenUC)
+	//barang
+	barangCrudHandler := baranghandler.NewBarangHandler(barangCrudUC)
+	barangPhotoHandler := baranghandler.NewBarangPhotoHandler(barangPhotoUC)
 	
 
 
@@ -165,8 +174,8 @@ func NewApp() (*App, error) {
 		adminGetDetailUserHandler,
 		adminResetPassHandler,
 		deviceTokenhandler,
-		
-		
+		barangCrudHandler,
+		barangPhotoHandler,
 	)
 
 	return &App{
