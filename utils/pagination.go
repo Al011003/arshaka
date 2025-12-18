@@ -22,3 +22,4 @@ func ValidatePagination(page int, limit int) (int, int) {
 func CalcTotalPages(totalRows int, limit int) int {
     return int(math.Ceil(float64(totalRows) / float64(limit)))
 }
+

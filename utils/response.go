@@ -46,3 +46,16 @@ func NotFound(c *gin.Context, message string) {
 func InternalError(c *gin.Context, message string) {
 	Error(c, http.StatusInternalServerError, message)
 }
+
+func Created(c *gin.Context, data interface{}, message string) {
+    response := gin.H{
+        "status":  "created",  // ✅ fixed typo
+        "message": message,
+    }
+    
+    if data != nil {
+        response["data"] = data
+    }
+    
+    c.JSON(201, response)
+}
