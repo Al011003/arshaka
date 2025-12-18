@@ -5,6 +5,7 @@ import (
 	AngkatanMapalaHandler "backend/handler/angkatan_mapala"
 	AuthHandler "backend/handler/auth"
 	BarangHandler "backend/handler/barang"
+	CartHandler "backend/handler/cart"
 	DeviceHandler "backend/handler/device_token"
 	DataHandler "backend/handler/masterdata"
 	superAdminHandler "backend/handler/superadmin"
@@ -45,6 +46,7 @@ func SetupRouter(
 	barangCrudHandler *BarangHandler.BarangHandler,
 	barangPhotoHandler *BarangHandler.BarangPhotoHandler,
 	
+	cartHandler *CartHandler.CartHandler,
 
 ) *gin.Engine {
 	r := gin.Default()
@@ -60,11 +62,11 @@ func SetupRouter(
 	
 	userRoute := mainRoute.Group("/user")
 	userRoute.Use(middleware.UserOnly())
-		userUpdateRoute := userRoute.Group("/update")
-			userUpdateRoute.PUT("/", userUpdateHandler.UpdateSelf)
-			userPhotoRoute := userUpdateRoute.Group("/photo")
-				userPhotoRoute.POST("/upload", userPhotoPicHandler.UpdatePhoto)
-				userPhotoRoute.DELETE("/delete", userPhotoPicHandler.DeletePhoto)
+	userUpdateRoute := userRoute.Group("/update")
+		userUpdateRoute.PUT("/", userUpdateHandler.UpdateSelf)
+		userPhotoRoute := userUpdateRoute.Group("/photo")
+			userPhotoRoute.POST("/upload", userPhotoPicHandler.UpdatePhoto)
+			userPhotoRoute.DELETE("/delete", userPhotoPicHandler.DeletePhoto)
 	userRoute.GET("/profile", userProfileHandelr.GetProfile)
 	userRoute.POST("/device-token", deviceTokenhandler.Save)
 	userRoute.POST("/password", changePasswordHandler.UpdatePassword)
@@ -72,6 +74,13 @@ func SetupRouter(
 	barangU := userRoute.Group("/barang")
 		barangU.GET("/", barangCrudHandler.GetAll)
 		barangU.GET("/:id", barangCrudHandler.GetByID)
+	cart := userRoute.Group("/cart")
+		cart.GET("", cartHandler.GetMyCart)              // Get my cart
+		cart.GET("/count", cartHandler.GetCartItemCount) // Get cart item count
+		cart.POST("", cartHandler.AddToCart)             // Add to cart
+		cart.PUT("/:id", cartHandler.UpdateCartItem)     // Update cart item
+		cart.DELETE("/:id", cartHandler.RemoveFromCart)  // Remove from cart
+		cart.DELETE("", cartHandler.ClearCart)        
 	
     
 	

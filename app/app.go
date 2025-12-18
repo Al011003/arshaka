@@ -11,6 +11,7 @@ import (
 	angkatanmapalahandler "backend/handler/angkatan_mapala"
 	authhandler "backend/handler/auth"
 	baranghandler "backend/handler/barang"
+	carthandelr "backend/handler/cart"
 	devicehandler "backend/handler/device_token"
 	datahandler "backend/handler/masterdata"
 	superadminhandler "backend/handler/superadmin"
@@ -35,6 +36,8 @@ import (
 	superAdminUpdateUC "backend/usecase/super_admin/update"
 	userProfileUC "backend/usecase/user/profile"
 	userUpdateUC "backend/usecase/user/update"
+
+	cartUC "backend/usecase/user/cart"
 	"backend/utils"
 )
 
@@ -54,7 +57,18 @@ func NewApp() (*App, error) {
 	db := config.InitDB()
 
 	// Auto migrate models
-	if err := db.AutoMigrate(&model.User{}, &model.Fakultas{}, &model.Jurusan{}, &model.AngkatanMapala{}, &model.DeviceToken{}, &model.PasswordResetRequest{}, &model.PasswordReset{}, &model.Barang{}); err != nil {
+	if err := db.AutoMigrate(
+    &model.User{}, 
+    &model.Fakultas{}, 
+    &model.Jurusan{}, 
+    &model.AngkatanMapala{}, 
+    &model.DeviceToken{}, 
+    &model.PasswordResetRequest{}, 
+    &model.PasswordReset{}, 
+    &model.Barang{},
+    &model.Cart{},      // <-- tambah ini
+    &model.CartItem{},  // <-- dan ini
+	); err != nil {
 		return nil, err
 	}
 
@@ -70,6 +84,7 @@ func NewApp() (*App, error) {
 	PasswordResetRepo := repo.NewPasswordResetRepo(db)
 	PasswordResetRepository := repo.NewPasswordResetRepository(db)
 	barangRepo := repo.NewBarangRepository(db)
+	cartRepo := repo.NewCartRepository(db)
 
 	// Init Usecases
 	//autj
@@ -105,6 +120,8 @@ func NewApp() (*App, error) {
 	//barang
 	barangCrudUC := barangUC.NewBarangUseCase(barangRepo)
 	barangPhotoUC := barangUC.NewBarangPhotoUsecase(barangRepo)
+	//cart
+	userCartUC := cartUC.NewCartUsecase(cartRepo, barangRepo)
 
 
 
@@ -142,6 +159,8 @@ func NewApp() (*App, error) {
 	//barang
 	barangCrudHandler := baranghandler.NewBarangHandler(barangCrudUC)
 	barangPhotoHandler := baranghandler.NewBarangPhotoHandler(barangPhotoUC)
+	//cart
+	cartHandler := carthandelr.NewCartHandler(userCartUC)
 	
 
 
@@ -176,6 +195,7 @@ func NewApp() (*App, error) {
 		deviceTokenhandler,
 		barangCrudHandler,
 		barangPhotoHandler,
+		cartHandler,
 	)
 
 	return &App{
