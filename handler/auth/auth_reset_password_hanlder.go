@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 
+	req "backend/dto/request/auth"
+	res "backend/dto/response/common"
 	usecase "backend/usecase/auth"
 	"backend/utils"
 
@@ -10,63 +12,120 @@ import (
 )
 
 type PasswordResetHandler struct {
-    authUC usecase.PasswordResetUsecase
+	authUC usecase.PasswordResetUsecase
 }
 
 func NewPasswordResetHandler(authUC usecase.PasswordResetUsecase) *PasswordResetHandler {
-    return &PasswordResetHandler{
-        authUC: authUC,
-    }
+	return &PasswordResetHandler{
+		authUC: authUC,
+	}
 }
 
-// POST /auth/request-otp
+// RequestOTP godoc
+// @Summary      Request OTP reset password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.RequestOTPRequest  true  "Email user"
+// @Success      200      {object}  response.BaseResponse
+// @Failure      400      {object}  response.BaseResponse
+// @Router       /auth/request-otp [post]
 func (h *PasswordResetHandler) RequestOTP(c *gin.Context) {
-    var req struct {
-        Email string `json:"email" binding:"required,email"`
-    }
+	var request req.RequestOTPRequest
 
-    // Ambil email dari body
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "message": "email tidak valid",
-        })
-        return
-    }
+	if err := request.BindAndValidate(c); err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
 
-    // Kirim OTP
-    if err := h.authUC.SendOTP(c, req.Email); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "message": err.Error(),
-        })
-        return
-    }
+	if err := h.authUC.SendOTP(c, request.Email); err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "message": "OTP telah dikirim ke email",
-    })
+	utils.Success(c, nil, "OTP berhasil dikirim ke email")
 }
 
+// ======================================================
+
+// VerifyResetOTP godoc
+// @Summary      Verifikasi OTP reset password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.VerifyResetOTPRequest  true  "Email dan OTP"
+// @Success      200      {object}  response.BaseResponse
+// @Failure      400      {object}  response.BaseResponse
+// @Router       /auth/verify-reset-otp [post]
+func (h *PasswordResetHandler) VerifyResetOTP(c *gin.Context) {
+	var request req.VerifyResetOTPRequest
+
+	if err := request.BindAndValidate(c); err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	resetToken, expiresIn, err := h.authUC.VerifyOTPAndGenerateToken(
+		c,
+		request.Email,
+		request.OTP,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	utils.Success(c, gin.H{
+		"reset_token": resetToken,
+		"expires_in":  expiresIn,
+	}, "OTP berhasil diverifikasi")
+}
+
+// ======================================================
+
+// ResetPassword godoc
+// @Summary      Reset password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.ResetPasswordRequest  true  "Reset token dan password baru"
+// @Success      200      {object}  response.BaseResponse
+// @Failure      400      {object}  response.BaseResponse
+// @Router       /auth/reset-password [post]
 func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
-    var req struct {
-        Email       string `json:"email" binding:"required,email"`
-        OTP         string `json:"otp" binding:"required,len=6"`
-        NewPassword string `json:"new_password" binding:"required,min=6"`
-    }
+	var request req.ResetPasswordRequest
 
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "message": "input tidak valid",
-        })
-        return
-    }
+	if err := request.BindAndValidate(c); err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
 
-    // Reset password
-    if err := h.authUC.ResetPassword(c, req.Email, req.OTP, req.NewPassword); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "message": err.Error(),
-        })
-        return
-    }
+	if err := h.authUC.ResetPasswordWithToken(
+		c,
+		request.ResetToken,
+		request.NewPassword,
+	); err != nil {
+		c.JSON(http.StatusBadRequest, res.BaseResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+		return
+	}
 
-    utils.Success(c, nil, "Password berhasil diganti")
+	utils.Success(c, nil, "Password berhasil diganti")
 }

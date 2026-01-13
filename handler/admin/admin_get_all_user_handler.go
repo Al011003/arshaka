@@ -3,9 +3,8 @@ package handler
 import (
 	request "backend/dto/request/user"
 	response "backend/dto/response/common"
-	usecase "backend/usecase/admin/profile" // Sesuaikan path-nya
-
-	"net/http"
+	usecase "backend/usecase/admin/profile"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,59 +17,58 @@ func NewAdminUserHandler(uc usecase.AdminGetUserUsecase) *AdminUserHandler {
 	return &AdminUserHandler{UC: uc}
 }
 
+// GetUsers godoc
+// @Summary      Get list of users
+// @Description  Admin mengambil list user
+// @Tags         admin-user
+// @Accept       json
+// @Produce      json
+// @Param        page   query  int  false  "Page number"
+// @Param        limit  query  int  false  "Limit per page"
+// @Success      200    {object}  response.PaginatedResponse
+// @Failure      401    {object}  response.BaseResponse
+// @Failure      403    {object}  response.BaseResponse
+// @Router       /api/admin/user [get]
+// @Security     ApiKeyAuth
 func (h *AdminUserHandler) GetUsers(c *gin.Context) {
-	// Get admin ID dari middleware/JWT
+
+	// === Auth Context ===
 	idRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.BaseResponse{
-			Status:  "error",
-			Message: "unauthorized",
-		})
+		utils.Unauthorized(c, "unauthorized")
 		return
 	}
 	adminID := idRaw.(uint)
 
-	// Parse filter dari query params
+	// === Query Filter ===
 	var filter request.UserFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, response.BaseResponse{
-			Status:  "error",
-			Message: "Invalid query parameters",
-		})
+		utils.BadRequest(c, "invalid query parameters")
 		return
 	}
 
-	// Set default values
-	if filter.Page <= 0 {
-		filter.Page = 1
-	}
-	if filter.Limit <= 0 {
-		filter.Limit = 10
-	}
+	// === Pagination Normalization ===
+	filter.Page, filter.Limit = utils.ValidatePagination(filter.Page, filter.Limit)
 
-	// Call usecase
+	// === Usecase ===
 	users, total, err := h.UC.GetUsers(adminID, filter)
 	if err != nil {
-		c.JSON(http.StatusForbidden, response.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.Forbidden(c, err.Error())
 		return
 	}
 
-	// Calculate total pages
-	totalPages := (total + filter.Limit - 1) / filter.Limit
+	// === Response ===
+	totalPages := utils.CalcTotalPages(total, filter.Limit)
 
-	// Return dengan PaginatedResponse
-	c.JSON(http.StatusOK, response.PaginatedResponse{
-		Status:  "success",
-		Message: "Users retrieved successfully",
-		Data:    users,
-		Pagination: response.Pagination{
-			Page:       filter.Page,
-			Limit:      filter.Limit,
-			TotalRows:  total,
-			TotalPages: totalPages,
-		},
-	})
+	utils.PaginatedSuccess(
+			c,
+			users,
+			response.Pagination{
+				Page:       filter.Page,
+				Limit:      filter.Limit,
+				TotalRows:  total,
+				TotalPages: totalPages,
+			},
+			"users retrieved successfully",
+		)
 }

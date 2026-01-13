@@ -7,13 +7,18 @@ import (
 	BarangHandler "backend/handler/barang"
 	CartHandler "backend/handler/cart"
 	DeviceHandler "backend/handler/device_token"
+	LoanHandler "backend/handler/loan"
 	DataHandler "backend/handler/masterdata"
 	superAdminHandler "backend/handler/superadmin"
 	UserHandler "backend/handler/user"
 
 	"backend/middleware"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func SetupRouter(
@@ -45,21 +50,36 @@ func SetupRouter(
 
 	barangCrudHandler *BarangHandler.BarangHandler,
 	barangPhotoHandler *BarangHandler.BarangPhotoHandler,
+	barangCheckHandler * BarangHandler.BarangAvailabilityHandler,
 	
 	cartHandler *CartHandler.CartHandler,
 
+	loanUserHandler *LoanHandler.LoanUserHandler,
+	loanUserGetLoanHandler *LoanHandler.LoanUserGetHandler,
+
 ) *gin.Engine {
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+	AllowOrigins: []string{"*"},
+	AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+	AllowCredentials: false,
+}))
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	auth := r.Group("/auth")
 	auth.POST("/login", loginHandler.Login)
-	auth.POST("/forgot-password", userResetPasswordHandler.RequestOTP)
-	auth.POST("/forgot-password/change", userResetPasswordHandler.ResetPassword)
+	auth.POST("/request-otp", userResetPasswordHandler.RequestOTP)
+	auth.POST("/verify-reset-otp", userResetPasswordHandler.VerifyResetOTP)
+	auth.POST("/reset-password", userResetPasswordHandler.ResetPassword)
 		adminResetPassword := auth.Group("/admin-reset")
 			adminResetPassword.POST("/", adminResetPassHandler.RequestForgotPassword)
 	mainRoute := r.Group("/api")
 	mainRoute.Use(middleware.JWTAuth())
 	
+
+	//userr
 	userRoute := mainRoute.Group("/user")
 	userRoute.Use(middleware.UserOnly())
 	userUpdateRoute := userRoute.Group("/update")
@@ -71,16 +91,29 @@ func SetupRouter(
 	userRoute.POST("/device-token", deviceTokenhandler.Save)
 	userRoute.POST("/password", changePasswordHandler.UpdatePassword)
 	userRoute.POST("/email", userChangeEmailHandler.UpdateEmail)
+
 	barangU := userRoute.Group("/barang")
 		barangU.GET("/", barangCrudHandler.GetAll)
 		barangU.GET("/:id", barangCrudHandler.GetByID)
+		barangU.GET("/availabilitycheck/:barang_id", barangCheckHandler.GetCalendar)
+
 	cart := userRoute.Group("/cart")
 		cart.GET("", cartHandler.GetMyCart)              // Get my cart
 		cart.GET("/count", cartHandler.GetCartItemCount) // Get cart item count
 		cart.POST("", cartHandler.AddToCart)             // Add to cart
 		cart.PUT("/:id", cartHandler.UpdateCartItem)     // Update cart item
 		cart.DELETE("/:id", cartHandler.RemoveFromCart)  // Remove from cart
-		cart.DELETE("", cartHandler.ClearCart)        
+		cart.DELETE("", cartHandler.ClearCart)
+
+	userLoan := userRoute.Group("/loan")
+		userLoan.POST("", loanUserHandler.Create)
+		userLoan.PUT("/:loan_code", loanUserHandler.UpdateHeader)
+		userLoan.PUT("/:loan_code/items", loanUserHandler.UpdateItems)
+		userLoan.DELETE("/:loan_code", loanUserHandler.Cancel)
+
+		userLoan.GET("", loanUserHandler.GetMyLoans)
+		userLoan.GET("/:loan_code", loanUserHandler.GetDetail)    
+	
 	
     
 	
@@ -134,6 +167,7 @@ func SetupRouter(
 
 	superAdminRoute := mainRoute.Group("/super-admin")
 	superAdminRoute.Use(middleware.SuperAdminOnly())
+	superAdminRoute.POST("/register-user", registerHandler.RegisterUser)
 	superAdminRoute.POST("/register-admin", registerHandler.RegisterAdmin)
 	superAdminRoute.PUT("/update", superAdminUpdateHandler.SuperAdminUpdateSelf)
 	superAdminRoute.GET("/profile", superAdminProfileHandler.GetProfile)
@@ -150,8 +184,6 @@ func SetupRouter(
 			resetPassRoute.GET("/", superAdminAccResetHandler.GetAllRequests)
 			resetPassRoute.POST("/approve/:resetID", superAdminAccResetHandler.ApproveReset)
 			resetPassRoute.POST("/cancel/:resetID", superAdminAccResetHandler.CancelReset)
-	
-
 	
 
 	return r

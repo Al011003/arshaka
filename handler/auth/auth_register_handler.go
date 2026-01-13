@@ -20,7 +20,18 @@ func NewRegisterHandler(a usecase.RegisterUsecase) *RegisterHandler {
 	}
 }
 
-// =================== Register User / Anggota ===================
+// RegisterUser godoc
+// @Summary      Register new user/anggota
+// @Description  Mendaftarkan user/anggota baru ke sistem
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.RegisterUserRequest  true  "User registration data"
+// @Success      200      {object}  map[string]interface{}  "User berhasil dibuat"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized - token tidak valid atau tidak ada"
+// @Router       /api/super-admin/register-user [post]
+// @Security     ApiKeyAuth
 func (h *RegisterHandler) RegisterUser(c *gin.Context) {
 	var request req.RegisterUserRequest
 	if err := request.BindandValidate(c); err != nil {
@@ -44,7 +55,18 @@ func (h *RegisterHandler) RegisterUser(c *gin.Context) {
 
 }
 
-// =================== Register Admin ===================
+// RegisterAdmin godoc
+// @Summary      Register new admin
+// @Description  Mendaftarkan admin baru (hanya bisa dilakukan oleh super admin)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.RegisterAdminRequest  true  "Admin registration data"
+// @Success      200      {object}  map[string]interface{}  "Admin berhasil dibuat"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized - token tidak valid atau tidak ada"
+// @Router       /api/super-admin/register-admin [post]
+// @Security ApiKeyAuth
 func (h *RegisterHandler) RegisterAdmin(c *gin.Context) {
 	var request req.RegisterAdminRequest
 	// Validasi payload

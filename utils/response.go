@@ -20,6 +20,21 @@ func Success(c *gin.Context, data interface{}, message string) {
 	c.JSON(200, response)
 }
 
+func PaginatedSuccess(
+	c *gin.Context,
+	data interface{},
+	pagination interface{},
+	message string,
+) {
+	c.JSON(200, gin.H{
+		"status":     "success",
+		"message":    message,
+		"data":       data,
+		"pagination": pagination,
+	})
+}
+
+
 func Error(c *gin.Context, code int, message string) {
 	c.JSON(code, gin.H{
 		"status":  "error",

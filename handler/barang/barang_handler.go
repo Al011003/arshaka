@@ -22,7 +22,19 @@ func NewBarangHandler(barangUC usecase.BarangUseCase) *BarangHandler {
 	}
 }
 
-// Create - POST /admin/barang
+// Create godoc
+// @Summary      Create new barang
+// @Description  Membuat barang baru (admin only)
+// @Tags         barang
+// @Accept       json
+// @Produce      json
+// @Param        request  body      barang.CreateBarangRequest  true  "Barang data"
+// @Success      201      {object}  map[string]interface{}  "Barang berhasil dibuat"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized"
+// @Failure      500      {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang [post]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) Create(c *gin.Context) {
 	var req barang.CreateBarangRequest
 
@@ -52,7 +64,25 @@ func (h *BarangHandler) Create(c *gin.Context) {
 	})
 }
 
-// GetAll - GET /admin/barang
+// GetAll godoc
+// @Summary      Get all barang
+// @Description  Mengambil semua data barang dengan filter dan pagination
+// @Tags         barang
+// @Accept       json
+// @Produce      json
+// @Param        status      query     string  false  "Filter by status (aktif/tidak_aktif)"
+// @Param        kategori    query     string  false  "Filter by kategori"
+// @Param        search      query     string  false  "Search by nama or kode"
+// @Param        page        query     int     false  "Page number (default: 1)"
+// @Param        limit       query     int     false  "Items per page (default: 10)"
+// @Param        sort_by     query     string  false  "Sort field (default: created_at)"
+// @Param        sort_order  query     string  false  "Sort order: asc/desc (default: desc)"
+// @Success      200         {object}  map[string]interface{}  "Data barang berhasil diambil"
+// @Failure      400         {object}  map[string]interface{}  "Bad request"
+// @Failure      401         {object}  map[string]interface{}  "Unauthorized"
+// @Failure      500         {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang [get]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) GetAll(c *gin.Context) {
     // Cek role
     role := c.GetString("role")
@@ -98,7 +128,20 @@ func (h *BarangHandler) GetAll(c *gin.Context) {
 
 
 
-// GetByID - GET /admin/barang/:id
+// GetByID godoc
+// @Summary      Get barang by ID
+// @Description  Mengambil detail barang berdasarkan ID
+// @Tags         barang
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Barang ID"
+// @Success      200  {object}  map[string]interface{}  "Data barang berhasil diambil"
+// @Failure      400  {object}  map[string]interface{}  "Bad request - ID tidak valid"
+// @Failure      401  {object}  map[string]interface{}  "Unauthorized"
+// @Failure      404  {object}  map[string]interface{}  "Barang tidak ditemukan"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang/{id} [get]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) GetByID(c *gin.Context) {
 	// Ambil ID barang dari URL
 	id := c.Param("id")
@@ -131,7 +174,21 @@ func (h *BarangHandler) GetByID(c *gin.Context) {
 	utils.Success(c, result, "data barang berhasil diambil")
 }
 
-// Update - PUT /admin/barang/:id
+// Update godoc
+// @Summary      Update barang
+// @Description  Update data barang berdasarkan ID (admin only)
+// @Tags         barang
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                      true  "Barang ID"
+// @Param        request  body      barang.UpdateBarangRequest  true  "Updated barang data"
+// @Success      200      {object}  map[string]interface{}  "Barang berhasil diupdate"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized"
+// @Failure      404      {object}  map[string]interface{}  "Barang tidak ditemukan"
+// @Failure      500      {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang/{id} [put]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) Update(c *gin.Context) {
 	// Get ID from URL param
 	id := c.Param("id")
@@ -165,7 +222,20 @@ func (h *BarangHandler) Update(c *gin.Context) {
 	utils.Success(c, result, "barang berhasil diupdate")
 }
 
-// Delete - DELETE /admin/barang/:id
+// Delete godoc
+// @Summary      Delete barang
+// @Description  Menghapus barang berdasarkan ID (admin only)
+// @Tags         barang
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Barang ID"
+// @Success      200  {object}  map[string]interface{}  "Barang berhasil dihapus"
+// @Failure      400  {object}  map[string]interface{}  "Bad request - ID tidak valid"
+// @Failure      401  {object}  map[string]interface{}  "Unauthorized"
+// @Failure      404  {object}  map[string]interface{}  "Barang tidak ditemukan"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang/{id} [delete]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) Delete(c *gin.Context) {
 	// Get ID from URL param
 	id := c.Param("id")

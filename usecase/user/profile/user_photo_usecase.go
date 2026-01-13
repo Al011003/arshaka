@@ -72,7 +72,7 @@ func (u *userPhotoUsecase) UpdatePhoto(userID uint, file *multipart.FileHeader) 
 	}
 
 	// URL yang disimpan ke DB
-	url := "/" + fullPath
+	url := "/uploads/profile/" + filename
 
 	// Update DB
 	err = u.userRepo.UpdateProfilePhoto(userID, url)

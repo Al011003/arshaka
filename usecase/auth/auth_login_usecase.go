@@ -7,8 +7,6 @@ import (
 	"backend/token"
 	"backend/utils"
 	"errors"
-	"fmt"
-	"os"
 )
 
 type LoginUsecase interface {
@@ -38,8 +36,6 @@ func (u *loginUsecase) Login(req req.LoginRequest) (*res.LoginResponse, error) {
 	}
 
 	// 3. generate access token
-	fmt.Println("ROLE DARI DATABASE:", user.Role)
-	fmt.Println("SECRET_KEY VALIDATE =", os.Getenv("SECRET_KEY"))
 	accessToken, err := token.GenerateAccessToken(user.ID, user.Role)
 	if err != nil {
 		return nil, errors.New("gagal generate access token")

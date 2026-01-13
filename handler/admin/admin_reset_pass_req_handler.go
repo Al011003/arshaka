@@ -13,8 +13,21 @@ type AdminForgotPasswordHandler struct {
 }
 
 func NewAdminForgotPasswordHandler(uc usecase.AdminResetPasswordUsecase) *AdminForgotPasswordHandler {
-	return &AdminForgotPasswordHandler{uc: uc}
+	return &AdminForgotPasswordHandler{
+		uc: uc,
+	}
 }
+
+// RequestForgotPassword godoc
+// @Summary      Request admin password reset
+// @Description  Admin mengajukan permintaan reset password berdasarkan identitas
+// @Tags         admin-auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      admin.ForgotPasswordRequest  true  "Forgot password request"
+// @Success      200      {object}  map[string]interface{}  "Permintaan reset berhasil"
+// @Failure      400      {object}  map[string]interface{}  "Bad request"
+// @Router       /auth/admin-reset [post]
 func (h *AdminForgotPasswordHandler) RequestForgotPassword(c *gin.Context) {
 	var body req.ForgotPasswordRequest
 

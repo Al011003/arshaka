@@ -13,6 +13,7 @@ import (
 	baranghandler "backend/handler/barang"
 	carthandelr "backend/handler/cart"
 	devicehandler "backend/handler/device_token"
+	loanhandler "backend/handler/loan"
 	datahandler "backend/handler/masterdata"
 	superadminhandler "backend/handler/superadmin"
 	userhandler "backend/handler/user"
@@ -38,6 +39,9 @@ import (
 	userUpdateUC "backend/usecase/user/update"
 
 	cartUC "backend/usecase/user/cart"
+
+	loanUC "backend/usecase/loan"
+
 	"backend/utils"
 )
 
@@ -67,7 +71,11 @@ func NewApp() (*App, error) {
     &model.PasswordReset{}, 
     &model.Barang{},
     &model.Cart{},      // <-- tambah ini
-    &model.CartItem{},  // <-- dan ini
+    &model.CartItem{},
+	&model.Loan{},
+	&model.LoanItem{},
+	&model.LoanFlowHistory{},
+	&model.LoanStatusHistory{},  // <-- dan ini
 	); err != nil {
 		return nil, err
 	}
@@ -85,6 +93,9 @@ func NewApp() (*App, error) {
 	PasswordResetRepository := repo.NewPasswordResetRepository(db)
 	barangRepo := repo.NewBarangRepository(db)
 	cartRepo := repo.NewCartRepository(db)
+	loanRepo := repo.NewLoanRepository(db)
+	loanFlowStatusRepo := repo.NewLoanFlowHistoryRepository(db)
+	loanStatusRepo := repo.NewLoanStatusHistoryRepository(db)
 
 	// Init Usecases
 	//autj
@@ -120,8 +131,12 @@ func NewApp() (*App, error) {
 	//barang
 	barangCrudUC := barangUC.NewBarangUseCase(barangRepo)
 	barangPhotoUC := barangUC.NewBarangPhotoUsecase(barangRepo)
+	barangCheckUC := barangUC.NewAvailabilityUseCase(loanRepo, barangRepo)
 	//cart
 	userCartUC := cartUC.NewCartUsecase(cartRepo, barangRepo)
+	//loan
+	userLoanUC := loanUC.NewLoanUserUsecase(loanRepo, cartRepo, barangRepo, loanStatusRepo, loanFlowStatusRepo)
+	userGetLoanUC := loanUC.NewLoanGetUsecase(loanRepo)
 
 
 
@@ -159,9 +174,12 @@ func NewApp() (*App, error) {
 	//barang
 	barangCrudHandler := baranghandler.NewBarangHandler(barangCrudUC)
 	barangPhotoHandler := baranghandler.NewBarangPhotoHandler(barangPhotoUC)
+	barangCheckHandler := baranghandler.NewBarangAvailabilityHandler(barangCheckUC)
 	//cart
 	cartHandler := carthandelr.NewCartHandler(userCartUC)
-	
+	//loan
+	loanUserHandler := loanhandler.NewLoanUserHandler(userLoanUC)
+	loanUserGetLoanHandler := loanhandler.NewLoanUserGetHandler(userGetLoanUC)
 
 
 
@@ -195,7 +213,10 @@ func NewApp() (*App, error) {
 		deviceTokenhandler,
 		barangCrudHandler,
 		barangPhotoHandler,
+		barangCheckHandler,
 		cartHandler,
+		loanUserHandler,
+		loanUserGetLoanHandler,
 	)
 
 	return &App{

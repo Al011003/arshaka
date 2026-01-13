@@ -74,7 +74,7 @@ func (u *barangPhotoUsecase) UpdatePhoto(barangID uint, file *multipart.FileHead
 	}
 
 	// URL yang disimpan ke DB
-	url := "/" + fullPath
+	url := "/uploads/barang/" + filename
 
 	// Update DB
 	barang.CoverURL = url

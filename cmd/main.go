@@ -4,7 +4,23 @@ import (
 	"log"
 
 	"backend/app"
+	_ "backend/docs" // Import docs yang bakal di-generate
 )
+
+// @title           Backend API
+// @version         1.0
+// @description     API Documentation untuk Frontend
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.email  support@example.com
+
+// @BasePath  /
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description JWT token tanpa prefix Bearer
 
 func main() {
 	application, err := app.NewApp()

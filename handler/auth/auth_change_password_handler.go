@@ -18,6 +18,18 @@ func NewUpdatePasswordHandler(uc usecase.UpdatePasswordUsecase) *UpdatePasswordH
     }
 }
 
+// UpdatePassword godoc
+// @Summary      Update user password
+// @Description  Update password untuk user yang sedang login (memerlukan old password)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.UpdatePasswordRequest  true  "Old password and new password"
+// @Success      200      {object}  map[string]interface{}  "Password berhasil diperbarui"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error atau old password salah"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized - user tidak ditemukan dalam token"
+// @Router       /api/user/password [post]
+// @Security ApiKeyAuth
 func (h *UpdatePasswordHandler) UpdatePassword(c *gin.Context) {
     var request req.UpdatePasswordRequest
 

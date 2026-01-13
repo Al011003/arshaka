@@ -21,7 +21,17 @@ func NewLoginHandler(a usecase.LoginUsecase) *LoginHandler {
 	}
 }
 
-// LOGIN HANDLER
+// Login godoc
+// @Summary      User login
+// @Description  Login menggunakan email dan password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      auth.LoginRequest  true  "Login credentials"
+// @Success      200      {object}  response.BaseResponse  "Login berhasil"
+// @Failure      400      {object}  response.BaseResponse  "Bad request"
+// @Failure      401      {object}  response.BaseResponse  "Unauthorized"
+// @Router       /auth/login [post]
 func (h *LoginHandler) Login(c *gin.Context) {
 	var request req.LoginRequest
 	

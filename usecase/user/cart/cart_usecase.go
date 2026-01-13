@@ -83,7 +83,6 @@ func (u *cartUsecase) AddToCart(userID uint, req req.AddToCartRequest) (*res.Car
 	existingItem, err := u.cartRepo.GetCartItem(cart.ID, req.BarangID)
 	if err == nil {
 		// Barang sudah ada, update quantity
-		existingItem.Quantity += req.Quantity
 		totalQty := existingItem.Quantity + req.Quantity
 			if totalQty > barang.StokTotal {
 			return nil, errors.New("stok barang tidak mencukupi")

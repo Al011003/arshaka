@@ -28,6 +28,8 @@ type BarangRepository interface {
     // Utility
     IsKodeExists(kode string) (bool, error)
     GetAllKategori() ([]string, error)
+    IsActive(barangID uint) (bool, error)
+
 }
 
 type barangRepository struct {
@@ -238,4 +240,12 @@ func (r *barangRepository) GetAllKategori() ([]string, error) {
         return nil, err
     }
     return kategoris, nil
+}
+
+func (r *barangRepository) IsActive(barangID uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.Barang{}).
+		Where("id = ? AND status != ?", barangID, "nonaktif").
+		Count(&count).Error
+	return count > 0, err
 }

@@ -1,49 +1,53 @@
 package handler
 
 import (
-	res "backend/dto/response/common"
-	usecase "backend/usecase/admin/profile"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	usecase "backend/usecase/admin/profile"
+	"backend/utils"
 )
 
 type AdminGetUserHandler struct {
-	adminUserDetailUC usecase.AdminUserDetailUsecase
+	uc usecase.AdminUserDetailUsecase
 }
 
-func NewAdminGetUserHandler(adminUserDetailUC usecase.AdminUserDetailUsecase) *AdminGetUserHandler {
+func NewAdminGetUserHandler(uc usecase.AdminUserDetailUsecase) *AdminGetUserHandler {
 	return &AdminGetUserHandler{
-		adminUserDetailUC: adminUserDetailUC,
+		uc: uc,
 	}
 }
 
+// GetDetailUser godoc
+// @Summary      Get user detail
+// @Description  Admin mengambil detail user berdasarkan ID
+// @Tags         admin-user
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int  true  "User ID"
+// @Success      200  {object}  map[string]interface{} "User detail"
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /api/admin/user/{id} [get]
+// @Security     ApiKeyAuth
 func (h *AdminGetUserHandler) GetDetailUser(c *gin.Context) {
-	// ambil param id user yang mau diliat
+	// Parse user ID
 	idStr := c.Param("id")
-	targetID, err := strconv.Atoi(idStr)
+	userID, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid user id",
-		})
+		utils.BadRequest(c, "invalid user id")
 		return
 	}
 
-	// panggil usecase
-	userDetail, err := h.adminUserDetailUC.GetDetail(uint(targetID))
+	// Call usecase
+	userDetail, err := h.uc.GetDetail(uint(userID))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		// asumsi usecase return error kalau data tidak ditemukan
+		utils.NotFound(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "user detail retrieved successfully",
-		Data:    userDetail,
-	})
+	utils.Success(c, userDetail, "user detail retrieved successfully")
 }

@@ -6,15 +6,18 @@ import (
 	"backend/repo"
 	"backend/utils"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
+	mathrand "math/rand"
 	"time"
 )
 
 type PasswordResetUsecase interface {
 	SendOTP(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, email, otp, newPassword string) error
+	VerifyOTPAndGenerateToken(ctx context.Context, email, otp string) (resetToken string, expiresIn int, err error)
+	ResetPasswordWithToken(ctx context.Context, resetToken, newPassword string) error
 }
 
 type passwordResetUsecase struct {
@@ -36,12 +39,20 @@ func NewPasswordResetUsecase(
 }
 
 func generateOTP() string {
-	rand.Seed(time.Now().UnixNano())
-	return fmt.Sprintf("%06d", rand.Intn(1000000))
+	mathrand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("%06d", mathrand.Intn(1000000))
+}
+
+// Generate secure random token
+func generateResetToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return "reset_" + hex.EncodeToString(bytes), nil
 }
 
 func (u *passwordResetUsecase) SendOTP(ctx context.Context, email string) error {
-
 	// 1. Cek apakah user dengan email tsb ada
 	user, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
@@ -51,10 +62,8 @@ func (u *passwordResetUsecase) SendOTP(ctx context.Context, email string) error 
 	// 2. CEK COOLDOWN - Cek apakah ada OTP yang baru dibuat (< 1 menit yang lalu)
 	lastOTP, err := u.prRepo.GetLatestOTPByUserID(ctx, user.ID)
 	if err == nil && lastOTP != nil {
-		// Hitung berapa lama sejak OTP terakhir dibuat
 		timeSinceLastOTP := time.Since(lastOTP.CreatedAt)
 		
-		// Jika belum lewat 1 menit, tolak request
 		if timeSinceLastOTP < 1*time.Minute {
 			remainingSeconds := int(60 - timeSinceLastOTP.Seconds())
 			return fmt.Errorf("mohon tunggu %d detik lagi sebelum request OTP baru", remainingSeconds)
@@ -75,7 +84,7 @@ func (u *passwordResetUsecase) SendOTP(ctx context.Context, email string) error 
 		OTP:       otp,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
 		Used:      false,
-		CreatedAt: time.Now(), // PENTING: pastikan field ini ada
+		CreatedAt: time.Now(),
 	}
 
 	if err := u.prRepo.Create(ctx, pr); err != nil {
@@ -90,34 +99,65 @@ func (u *passwordResetUsecase) SendOTP(ctx context.Context, email string) error 
 	return nil
 }
 
-func (u *passwordResetUsecase) ResetPassword(ctx context.Context, email, otp, newPassword string) error {
-
-	// 1. cek user berdasarkan email
+// Verify OTP dan generate reset token
+func (u *passwordResetUsecase) VerifyOTPAndGenerateToken(ctx context.Context, email, otp string) (string, int, error) {
+	// 1. Cek user berdasarkan email
 	user, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return errors.New("email tidak ditemukan")
+		return "", 0, errors.New("email tidak ditemukan")
 	}
 
-	// 2. ambil OTP valid
+	// 2. Validasi OTP
 	pr, err := u.prRepo.GetValidOTP(ctx, user.ID, otp)
 	if err != nil {
-		return errors.New("otp salah atau sudah kadaluarsa")
+		return "", 0, errors.New("otp salah atau sudah kadaluarsa")
 	}
 
-	// 3. hash password baru
+	// 3. Generate reset token
+	resetToken, err := generateResetToken()
+	if err != nil {
+		return "", 0, fmt.Errorf("gagal generate reset token: %w", err)
+	}
+
+	// 4. Token expires dalam 10 menit
+	tokenExpiresAt := time.Now().Add(10 * time.Minute)
+	expiresIn := 600 // 10 menit dalam detik
+
+	// 5. Update record dengan reset token
+	if err := u.prRepo.UpdateResetToken(ctx, pr.ID, resetToken, tokenExpiresAt); err != nil {
+		return "", 0, fmt.Errorf("gagal menyimpan reset token: %w", err)
+	}
+
+	// 6. Mark OTP as used (opsional, bisa juga biarkan tetap valid sampai token dipakai)
+	if err := u.prRepo.MarkUsed(ctx, pr.ID); err != nil {
+		return "", 0, fmt.Errorf("gagal menandai OTP sebagai used: %w", err)
+	}
+
+	return resetToken, expiresIn, nil
+}
+
+// Reset password menggunakan token
+func (u *passwordResetUsecase) ResetPasswordWithToken(ctx context.Context, resetToken, newPassword string) error {
+	// 1. Validasi token
+	pr, err := u.prRepo.GetByResetToken(ctx, resetToken)
+	if err != nil {
+		return errors.New("token tidak valid atau sudah kadaluarsa")
+	}
+
+	// 2. Hash password baru
 	hashedPassword, err := utils.HashPassword(newPassword)
 	if err != nil {
 		return fmt.Errorf("gagal menghash password: %w", err)
 	}
 
-	// 4. update password user
-	if err := u.userRepo.UpdatePassword(user.ID, hashedPassword, false); err != nil {
+	// 3. Update password user
+	if err := u.userRepo.UpdatePassword(pr.UserID, hashedPassword, false); err != nil {
 		return fmt.Errorf("gagal mengupdate password: %w", err)
 	}
 
-	// 5. tandai OTP sudah dipakai
-	if err := u.prRepo.MarkUsed(ctx, pr.ID); err != nil {
-		return fmt.Errorf("gagal menandai OTP sebagai used: %w", err)
+	// 4. Invalidate token
+	if err := u.prRepo.MarkTokenUsed(ctx, pr.ID); err != nil {
+		return fmt.Errorf("gagal menginvalidasi token: %w", err)
 	}
 
 	return nil

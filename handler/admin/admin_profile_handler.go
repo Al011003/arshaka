@@ -1,48 +1,49 @@
 package handler
 
 import (
-	"net/http"
-
-	res "backend/dto/response/common"
-	usecase "backend/usecase/admin/profile"
-
 	"github.com/gin-gonic/gin"
+
+	usecase "backend/usecase/admin/profile"
+	"backend/utils"
 )
 
 type AdminProfileHandler struct {
-	profileUC usecase.AdminProfileUsecase
+	uc usecase.AdminProfileUsecase
 }
 
-func NewAdminProfileHandler(profileUC usecase.AdminProfileUsecase) *AdminProfileHandler {
+func NewAdminProfileHandler(uc usecase.AdminProfileUsecase) *AdminProfileHandler {
 	return &AdminProfileHandler{
-		profileUC: profileUC,
+		uc: uc,
 	}
 }
 
+// GetProfile godoc
+// @Summary      Get admin profile
+// @Description  Mengambil data profile admin yang sedang login
+// @Tags         admin-profile
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  map[string]interface{} "Admin profile"
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /api/admin/profile [get]
+// @Security     ApiKeyAuth
 func (h *AdminProfileHandler) GetProfile(c *gin.Context) {
+	// Ambil admin ID dari JWT
 	idRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, res.BaseResponse{
-			Status:  "error",
-			Message: "unauthorized",
-		})
+		utils.Unauthorized(c, "unauthorized")
 		return
 	}
 
-	AdminID := idRaw.(uint)
+	adminID := idRaw.(uint)
 
-	profile, err := h.profileUC.GetProfile(AdminID)
+	// Call usecase
+	profile, err := h.uc.GetProfile(adminID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "admin profile retrieved",
-		Data:    profile,
-	})
+	utils.Success(c, profile, "admin profile retrieved")
 }
