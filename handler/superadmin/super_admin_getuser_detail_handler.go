@@ -20,6 +20,16 @@ func NewSuperAdminGetUserHandler(userDetailUC usecase.UserDetailUsecase) *SuperA
 	}
 }
 
+// GetDetailUser godoc
+// @Summary      Get user detail by ID
+// @Description  Mengambil detail user berdasarkan ID (super admin only)
+// @Tags         super-admin-user
+// @Produce      json
+// @Param        id   path  int  true  "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /api/super-admin/user/{id} [get]
+// @Security     ApiKeyAuth
 func (h *SuperAdminGetUserHandler) GetDetailUser(c *gin.Context) {
 	// ambil param id user yang mau diliat
 	idStr := c.Param("id")

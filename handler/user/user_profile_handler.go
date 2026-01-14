@@ -17,6 +17,16 @@ func NewUserProfileHandler(profileUC usecase.UserProfileUsecase) *UserProfileHan
 	}
 }
 
+// GetProfile godoc
+// @Summary      Get user profile
+// @Description  Mengambil profil user yang sedang login
+// @Tags         user-profile
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /api/user/profile [get]
+// @Security     ApiKeyAuth
 func (h *UserProfileHandler) GetProfile(c *gin.Context) {
 	idRaw, exists := c.Get("user_id")
 	if !exists {

@@ -1,11 +1,11 @@
 package handler
 
 import (
-	req "backend/dto/request/angkatan_mapala"
-	res "backend/dto/response/common"
-	usecase "backend/usecase/angkatan_mapala"
-	"net/http"
 	"strconv"
+
+	req "backend/dto/request/angkatan_mapala"
+	usecase "backend/usecase/angkatan_mapala"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,125 +15,135 @@ type AngkatanMapalaHandler struct {
 }
 
 func NewAngkatanMapalaHandler(u usecase.AngkatanMapalaUsecase) *AngkatanMapalaHandler {
-	return &AngkatanMapalaHandler{
-		uc: u,
-	}
+	return &AngkatanMapalaHandler{uc: u}
 }
 
+//
+// ==========================
 // CREATE
+// ==========================
+
+// CreateAngkatanMapala godoc
+// @Summary      Create angkatan mapala
+// @Description  Admin membuat angkatan mapala baru
+// @Tags         angkatan-mapala
+// @Accept       json
+// @Produce      json
+// @Param        request  body      angkatan.AngkatanMapalaRequest  true  "Angkatan mapala payload"
+// @Success      201      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Router       /api/admin/angkatan-mapala [post]
+// @Security     ApiKeyAuth
 func (h *AngkatanMapalaHandler) Create(c *gin.Context) {
-	var request req.AngkatanMapalaRequest
+	var body req.AngkatanMapalaRequest
 
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+	if err := body.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	data, err := h.uc.Create(request)
+	data, err := h.uc.Create(body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil membuat angkatan mapala",
-		Data:    data,
-	})
+	utils.Created(c, data, "berhasil membuat angkatan mapala")
 }
 
+//
+// ==========================
 // GET ALL
+// ==========================
+
+// GetAllAngkatanMapala godoc
+// @Summary      Get all angkatan mapala
+// @Description  Admin mengambil semua data angkatan mapala
+// @Tags         angkatan-mapala
+// @Produce      json
+// @Success      200      {object}  map[string]interface{}
+// @Router       /api/admin/angkatan-mapala [get]
+// @Security     ApiKeyAuth
 func (h *AngkatanMapalaHandler) GetAll(c *gin.Context) {
 	data, err := h.uc.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	// Jika data kosong
 	if len(data) == 0 {
-		c.JSON(http.StatusOK, res.BaseResponse{
-			Status:  "success",
-			Message: "data kosong",
-			Data:    []interface{}{}, // supaya FE tidak error
-		})
+		utils.Success(c, []interface{}{}, "data kosong")
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil mengambil data",
-		Data:    data,
-	})
+	utils.Success(c, data, "berhasil mengambil data")
 }
+
+//
+// ==========================
 // UPDATE
+// ==========================
+
+// UpdateAngkatanMapala godoc
+// @Summary      Update angkatan mapala
+// @Description  Admin update data angkatan mapala
+// @Tags         angkatan-mapala
+// @Accept       json
+// @Produce      json
+// @Param        id       path      int                            true  "Angkatan ID"
+// @Param        request  body      angkatan.AngkatanMapalaRequest  true  "Update payload"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Router       /api/admin/angkatan-mapala/{id} [put]
+// @Security     ApiKeyAuth
 func (h *AngkatanMapalaHandler) Update(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "id tidak valid",
-		})
+		utils.BadRequest(c, "id tidak valid")
 		return
 	}
 
-	var request req.AngkatanMapalaRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+	var body req.AngkatanMapalaRequest
+	if err := body.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	data, err := h.uc.Update(uint(id), request)
+	data, err := h.uc.Update(uint(id), body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil update angkatan mapala",
-		Data:    data,
-	})
+	utils.Success(c, data, "berhasil update angkatan mapala")
 }
 
+//
+// ==========================
 // DELETE
+// ==========================
+
+// DeleteAngkatanMapala godoc
+// @Summary      Delete angkatan mapala
+// @Description  Admin menghapus angkatan mapala
+// @Tags         angkatan-mapala
+// @Produce      json
+// @Param        id   path  int  true  "Angkatan ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /api/admin/angkatan-mapala/{id} [delete]
+// @Security     ApiKeyAuth
 func (h *AngkatanMapalaHandler) Delete(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "id tidak valid",
-		})
+		utils.BadRequest(c, "id tidak valid")
 		return
 	}
 
 	if err := h.uc.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil dihapus",
-	})
+	utils.Success(c, nil, "berhasil dihapus")
 }

@@ -20,6 +20,18 @@ func NewAdminResetPasswordHandler(uc usecase.SuperAdminAccResetPasswordUsecase) 
 // ======================================================
 // POST /admin/reset-password/approve/:userID
 // ======================================================
+
+// ApproveReset godoc
+// @Summary      Approve reset password request
+// @Description  Menyetujui request reset password dan mereset password user (super admin only)
+// @Tags         super-admin-reset-password
+// @Produce      json
+// @Param        resetID  path  int  true  "Reset Request ID"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Router       /api/super-admin/reset-password/approve/{resetID} [post]
+// @Security     ApiKeyAuth
 func (h *SuperAdminResetPasswordHandler) ApproveReset(c *gin.Context) {
 	idRaw, exists := c.Get("user_id")
 	if !exists {
@@ -44,6 +56,18 @@ func (h *SuperAdminResetPasswordHandler) ApproveReset(c *gin.Context) {
 	utils.Success(c, nil, "Reset password berhasil disetujui. Password user telah direset.")
 }
 
+
+// CancelReset godoc
+// @Summary      Cancel reset password request
+// @Description  Membatalkan request reset password (super admin only)
+// @Tags         super-admin-reset-password
+// @Produce      json
+// @Param        resetID  path  int  true  "Reset Request ID"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Router       /api/super-admin/reset-password/cancel/{resetID} [post]
+// @Security     ApiKeyAuth
 func (h *SuperAdminResetPasswordHandler)CancelReset(c *gin.Context) {
 	idRaw, exists := c.Get("user_id")
 	if !exists {
@@ -68,6 +92,16 @@ func (h *SuperAdminResetPasswordHandler)CancelReset(c *gin.Context) {
 	utils.Success(c, nil, "Reset password tidak disetujui. Password user tidak berubah.")
 }
 
+// GetAllRequests godoc
+// @Summary      Get all reset password requests
+// @Description  Mengambil semua request reset password dengan filter status (super admin only)
+// @Tags         super-admin-reset-password
+// @Produce      json
+// @Param        status  query  string  false  "Filter status (pending/approved/cancelled)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      500     {object}  map[string]interface{}
+// @Router       /api/super-admin/reset-password [get]
+// @Security     ApiKeyAuth
 func (h *SuperAdminResetPasswordHandler) GetAllRequests(c *gin.Context) {
 	// AdminID check (opsional jika sudah dicek middleware)
 	status := c.Query("status")

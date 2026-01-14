@@ -2,9 +2,8 @@ package handler
 
 import (
 	req "backend/dto/request/masterdata"
-	res "backend/dto/response/common"
 	usecase "backend/usecase/masterdata"
-	"net/http"
+	"backend/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -20,122 +19,132 @@ func NewFakultasHandler(u usecase.FakultasUsecase) *FakultasHandler {
 	}
 }
 
-// CREATE
+// CreateFakultas godoc
+// @Summary      Create Fakultas
+// @Description  Menambahkan data fakultas baru
+// @Tags         Fakultas
+// @Accept       json
+// @Produce      json
+// @Param        request body data.FakultasRequest true "Payload fakultas"
+// @Success      201 {object} response.BaseResponse
+// @Failure      400 {object} response.BaseResponse
+// @Failure      500 {object} response.BaseResponse
+// @Security     BearerAuth
+// @Router       /api/admin/fakultas [post]
 func (h *FakultasHandler) CreateFakultas(c *gin.Context) {
-	var request req.FakultasRequest
+	var reqBody req.FakultasRequest
 
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+	if err := reqBody.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	resp, err := h.fakultasUsecase.Create(request)
+	resp, err := h.fakultasUsecase.Create(reqBody)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil membuat fakultas",
-		Data:    resp,
-	})
+	utils.Created(c, resp, "berhasil membuat fakultas")
 }
 
-// GET ALL
+//
+// ==========================
+// GET ALL FAKULTAS
+// ==========================
+
+// GetAllFakultas godoc
+// @Summary      Get All Fakultas
+// @Description  Mengambil seluruh data fakultas
+// @Tags         Fakultas
+// @Produce      json
+// @Success      200 {object} response.BaseResponse
+// @Failure      500 {object} response.BaseResponse
+// @Security     BearerAuth
+// @Router       /api/admin/fakultas [get]
 func (h *FakultasHandler) GetAllFakultas(c *gin.Context) {
 	resp, err := h.fakultasUsecase.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	// jika data kosong
+	// FE-friendly response
 	if len(resp) == 0 {
-		c.JSON(http.StatusOK, res.BaseResponse{
-			Status:  "success",
-			Message: "data kosong",
-			Data:    []interface{}{},
-		})
+		utils.Success(c, []interface{}{}, "data kosong")
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil mengambil data",
-		Data:    resp,
-	})
+	utils.Success(c, resp, "berhasil mengambil data fakultas")
 }
 
-// UPDATE
+//
+// ==========================
+// UPDATE FAKULTAS
+// ==========================
+
+// UpdateFakultas godoc
+// @Summary      Update Fakultas
+// @Description  Mengupdate data fakultas berdasarkan ID
+// @Tags         Fakultas
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Fakultas ID"
+// @Param        request body data.FakultasRequest true "Payload fakultas"
+// @Success      200 {object} response.BaseResponse
+// @Failure      400 {object} response.BaseResponse
+// @Security     BearerAuth
+// @Router       /api/admin/fakultas/{id} [put]
 func (h *FakultasHandler) UpdateFakultas(c *gin.Context) {
-	var request req.FakultasRequest
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
-		return
-	}
-
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid ID",
-		})
+		utils.BadRequest(c, "id tidak valid")
 		return
 	}
 
-	resp, err := h.fakultasUsecase.Update(uint(id), request)
+	var reqBody req.FakultasRequest
+	if err := reqBody.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+
+	resp, err := h.fakultasUsecase.Update(uint(id), reqBody)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil update fakultas",
-		Data:    resp,
-	})
+	utils.Success(c, resp, "berhasil update fakultas")
 }
 
-// DELETE
+//
+// ==========================
+// DELETE FAKULTAS
+// ==========================
+
+// DeleteFakultas godoc
+// @Summary      Delete Fakultas
+// @Description  Menghapus data fakultas
+// @Tags         Fakultas
+// @Produce      json
+// @Param        id path int true "Fakultas ID"
+// @Success      200 {object} response.BaseResponse
+// @Failure      400 {object} response.BaseResponse
+// @Security     BearerAuth
+// @Router       /api/admin/fakultas/{id} [delete]
 func (h *FakultasHandler) DeleteFakultas(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid ID",
-		})
+		utils.BadRequest(c, "id tidak valid")
 		return
 	}
 
 	if err := h.fakultasUsecase.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil dihapus",
-	})
+	utils.Success(c, nil, "berhasil menghapus fakultas")
 }

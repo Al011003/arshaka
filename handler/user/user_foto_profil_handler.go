@@ -17,6 +17,19 @@ func NewUserPhotoHandler(photoUC usecase.UserPhotoUsecase) *UserPhotoHandler {
 }
 
 // ==================== UPDATE / SET PHOTO ====================
+
+// UpdatePhoto godoc
+// @Summary      Update user profile photo
+// @Description  Upload atau update foto profil user
+// @Tags         user-profile
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "Profile photo file"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      401   {object}  map[string]interface{}
+// @Router       /api/user/update/photo/upload [post]
+// @Security     ApiKeyAuth
 func (h *UserPhotoHandler) UpdatePhoto(c *gin.Context) {
 	var request req.UserPhotoRequest
 
@@ -37,6 +50,17 @@ func (h *UserPhotoHandler) UpdatePhoto(c *gin.Context) {
 }
 
 // ==================== DELETE PHOTO ====================
+
+// DeletePhoto godoc
+// @Summary      Delete user profile photo
+// @Description  Menghapus foto profil user
+// @Tags         user-profile
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /api/user/update/photo/delete [delete]
+// @Security     ApiKeyAuth
 func (h *UserPhotoHandler) DeletePhoto(c *gin.Context) {
 
 	userID := c.MustGet("user_id").(uint)

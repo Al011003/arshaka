@@ -55,7 +55,6 @@ func SetupRouter(
 	cartHandler *CartHandler.CartHandler,
 
 	loanUserHandler *LoanHandler.LoanUserHandler,
-	loanUserGetLoanHandler *LoanHandler.LoanUserGetHandler,
 
 ) *gin.Engine {
 	r := gin.Default()

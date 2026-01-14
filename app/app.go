@@ -136,7 +136,6 @@ func NewApp() (*App, error) {
 	userCartUC := cartUC.NewCartUsecase(cartRepo, barangRepo)
 	//loan
 	userLoanUC := loanUC.NewLoanUserUsecase(loanRepo, cartRepo, barangRepo, loanStatusRepo, loanFlowStatusRepo)
-	userGetLoanUC := loanUC.NewLoanGetUsecase(loanRepo)
 
 
 
@@ -179,7 +178,6 @@ func NewApp() (*App, error) {
 	cartHandler := carthandelr.NewCartHandler(userCartUC)
 	//loan
 	loanUserHandler := loanhandler.NewLoanUserHandler(userLoanUC)
-	loanUserGetLoanHandler := loanhandler.NewLoanUserGetHandler(userGetLoanUC)
 
 
 
@@ -216,7 +214,6 @@ func NewApp() (*App, error) {
 		barangCheckHandler,
 		cartHandler,
 		loanUserHandler,
-		loanUserGetLoanHandler,
 	)
 
 	return &App{

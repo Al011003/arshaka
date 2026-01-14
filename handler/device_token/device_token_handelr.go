@@ -20,6 +20,19 @@ func NewDeviceTokenHandler(saveUC devicetoken.SaveDeviceTokenUsecase) *DeviceTok
     }
 }
 
+// SaveDeviceToken godoc
+// @Summary      Save device token
+// @Description  Menyimpan device token user untuk kebutuhan push notification (FCM/APNs)
+// @Tags         device-token
+// @Accept       json
+// @Produce      json
+// @Param        request  body      request.SaveDeviceTokenRequest  true  "Device token data"
+// @Success      200      {object}  response.BaseResponse  "Device token berhasil disimpan"
+// @Failure      400      {object}  response.BaseResponse  "Invalid request body"
+// @Failure      401      {object}  response.BaseResponse  "Unauthorized"
+// @Failure      500      {object}  response.BaseResponse  "Internal server error"
+// @Router       /api/device-token [post]
+// @Security     ApiKeyAuth
 func (h *DeviceTokenHandler) Save(c *gin.Context) {
     // Bind JSON request
     var req request.SaveDeviceTokenRequest

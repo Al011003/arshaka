@@ -18,6 +18,19 @@ func NewUserUpdateHandler(u usecase.UserSelfUsecase) *UserUpdateHandler {
 	}
 }
 
+// UpdateSelf godoc
+// @Summary      Update user profile
+// @Description  Update profil user yang sedang login
+// @Tags         user-profile
+// @Accept       json
+// @Produce      json
+// @Param        request  body  user.UserUpdateRequest  true  "Update data"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Failure      500      {object}  map[string]interface{}
+// @Router       /api/user/update [put]
+// @Security     ApiKeyAuth
 func (h *UserUpdateHandler) UpdateSelf(c *gin.Context) {
 
 	// Ambil userID dari JWT

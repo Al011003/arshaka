@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	req "backend/dto/request/masterdata"
-	res "backend/dto/response/common"
 	usecase "backend/usecase/masterdata"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,157 +20,162 @@ func NewJurusanHandler(u usecase.JurusanUsecase) *JurusanHandler {
 	}
 }
 
-// Create
+//
+// ==========================
+// CREATE
+// ==========================
+
+// CreateJurusan godoc
+// @Summary      Create new jurusan
+// @Description  Membuat jurusan baru (admin only)
+// @Tags         jurusan
+// @Accept       json
+// @Produce      json
+// @Param        request  body      data.JurusanRequest  true  "Jurusan data"
+// @Success      201      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Router       /api/admin/jurusan [post]
+// @Security     ApiKeyAuth
 func (h *JurusanHandler) CreateJurusan(c *gin.Context) {
-	var request req.JurusanRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+	var body req.JurusanRequest
+
+	if err := body.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	resp, err := h.jurusanUsecase.Create(request)
+	result, err := h.jurusanUsecase.Create(body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "jurusan berhasil dibuat",
-		Data:    resp,
-	})
+	utils.Created(c, result, "jurusan berhasil dibuat")
 }
 
-// Get All
+//
+// ==========================
+// GET ALL
+// ==========================
+
+// GetAllJurusan godoc
+// @Summary      Get all jurusan
+// @Description  Mengambil semua data jurusan
+// @Tags         jurusan
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /api/admin/jurusan [get]
+// @Security     ApiKeyAuth
 func (h *JurusanHandler) GetAllJurusan(c *gin.Context) {
-	resp, err := h.jurusanUsecase.GetAll()
+	data, err := h.jurusanUsecase.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	// jika data kosong
-	if len(resp) == 0 {
-		c.JSON(http.StatusOK, res.BaseResponse{
-			Status:  "success",
-			Message: "data jurusan kosong",
-			Data:    []interface{}{}, // array kosong
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil mengambil data jurusan",
-		Data:    resp,
-	})
+	utils.Success(c, data, "data jurusan berhasil diambil")
 }
 
-// Update
+//
+// ==========================
+// GET BY FAKULTAS ID
+// ==========================
+
+// GetJurusanByFakultas godoc
+// @Summary      Get jurusan by fakultas ID
+// @Description  Mengambil data jurusan berdasarkan fakultas ID
+// @Tags         jurusan
+// @Produce      json
+// @Param        fakultas_id  path  int  true  "Fakultas ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /api/admin/jurusan/fakultas/{fakultas_id} [get]
+// @Security     ApiKeyAuth
+func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
+	fakultasID, err := strconv.ParseUint(c.Param("fakultas_id"), 10, 32)
+	if err != nil {
+		utils.BadRequest(c, "ID fakultas tidak valid")
+		return
+	}
+
+	data, err := h.jurusanUsecase.GetByFakultas(uint(fakultasID))
+	if err != nil {
+		utils.InternalError(c, err.Error())
+		return
+	}
+
+	utils.Success(c, data, "data jurusan berhasil diambil")
+}
+
+//
+// ==========================
+// UPDATE
+// ==========================
+
+// UpdateJurusan godoc
+// @Summary      Update jurusan
+// @Description  Update data jurusan berdasarkan ID
+// @Tags         jurusan
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                 true  "Jurusan ID"
+// @Param        request  body  data.JurusanRequest  true  "Jurusan data"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      500      {object}  map[string]interface{}
+// @Router       /api/admin/jurusan/{id} [put]
+// @Security     ApiKeyAuth
 func (h *JurusanHandler) UpdateJurusan(c *gin.Context) {
-	var request req.JurusanRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid ID",
-		})
+		utils.BadRequest(c, "ID jurusan tidak valid")
 		return
 	}
 
-	resp, err := h.jurusanUsecase.Update(uint(id), request)
+	var body req.JurusanRequest
+	if err := body.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.jurusanUsecase.Update(uint(id), body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "jurusan berhasil diupdate",
-		Data:    resp,
-	})
+	utils.Success(c, result, "jurusan berhasil diupdate")
 }
 
-// Delete
+//
+// ==========================
+// DELETE
+// ==========================
+
+// DeleteJurusan godoc
+// @Summary      Delete jurusan
+// @Description  Menghapus data jurusan berdasarkan ID
+// @Tags         jurusan
+// @Produce      json
+// @Param        id   path  int  true  "Jurusan ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /api/admin/jurusan/{id} [delete]
+// @Security     ApiKeyAuth
 func (h *JurusanHandler) DeleteJurusan(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid ID",
-		})
+		utils.BadRequest(c, "ID jurusan tidak valid")
 		return
 	}
 
 	if err := h.jurusanUsecase.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
+		utils.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "jurusan berhasil dihapus",
-	})
-}
-
-// Get by Fakultas ID
-func (h *JurusanHandler) GetJurusanByFakultas(c *gin.Context) {
-	fakultasIDParam := c.Param("fakultas_id")
-	fakultasID, err := strconv.Atoi(fakultasIDParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, res.BaseResponse{
-			Status:  "error",
-			Message: "invalid fakultas ID",
-		})
-		return
-	}
-
-	resp, err := h.jurusanUsecase.GetByFakultas(uint(fakultasID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, res.BaseResponse{
-			Status:  "error",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	if len(resp) == 0 {
-		c.JSON(http.StatusOK, res.BaseResponse{
-			Status:  "success",
-			Message: "jurusan tidak ditemukan untuk fakultas ini",
-			Data:    []interface{}{},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "berhasil mengambil data jurusan",
-		Data:    resp,
-	})
+	utils.Success(c, nil, "jurusan berhasil dihapus")
 }

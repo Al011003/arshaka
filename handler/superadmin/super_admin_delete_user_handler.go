@@ -20,6 +20,18 @@ func NewSuperAdminDeleteUserHandler(uc usecase.SuperAdminDeleteUserUsecase) *Sup
 }
 
 // DELETE /api/super-admin/user/:id
+
+// DeleteUser godoc
+// @Summary      Delete user
+// @Description  Menghapus user berdasarkan ID (super admin only)
+// @Tags         super-admin-user
+// @Produce      json
+// @Param        id   path  int  true  "User ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /api/super-admin/user/delete/{id} [delete]
+// @Security     ApiKeyAuth
 func (h *SuperAdminDeleteUserHandler) DeleteUser(c *gin.Context) {
 
 	// Ambil superadmin ID dari JWT

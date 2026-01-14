@@ -26,6 +26,20 @@ func NewSuperAdminSelfUpdateHandler(selfUC usecase.SuperAdminSelfUpdateUsecase) 
 // ===========================================
 // SUPERADMIN UPDATE DIRI SENDIRI
 // ===========================================
+
+// SuperAdminUpdateSelf godoc
+// @Summary      Update super admin profile
+// @Description  Update profil super admin sendiri (super admin only)
+// @Tags         super-admin-profile
+// @Accept       json
+// @Produce      json
+// @Param        request  body  user.SuperAdminSelfUpdateRequest  true  "Update data"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Failure      404      {object}  map[string]interface{}
+// @Router       /api/super-admin/update [put]
+// @Security     ApiKeyAuth
 func (h *SuperAdminSelfUpdateHandler) SuperAdminUpdateSelf(c *gin.Context) {
 	// Ambil superadminID dari JWT
 	idRaw, exists := c.Get("user_id")
@@ -70,8 +84,6 @@ func (h *SuperAdminSelfUpdateHandler) SuperAdminUpdateSelf(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res.BaseResponse{
-		Status:  "success",
-		Message: "profile superadmin updated successfully",
-	})
+	utils.Success(c, nil, "profile superadmin updated successfully")
+
 }

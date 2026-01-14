@@ -21,9 +21,22 @@ func NewBarangPhotoHandler(barangPhotoUC usecase.BarangPhotoUsecase) *BarangPhot
 	}
 }
 
-// UpdatePhoto - POST /admin/barang/:id/photo
+// UpdatePhoto godoc
+// @Summary      Upload / Update foto barang
+// @Description  Upload atau mengganti foto utama barang (admin only)
+// @Tags         barang-photo
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true  "ID Barang"
+// @Param        file  formData  file    true  "Foto barang"
+// @Success      200   {object}  map[string]interface{}  "Foto barang berhasil diupload"
+// @Failure      400   {object}  map[string]interface{}  "Bad request - ID tidak valid / file tidak valid"
+// @Failure      401   {object}  map[string]interface{}  "Unauthorized"
+// @Failure      404   {object}  map[string]interface{}  "Barang tidak ditemukan"
+// @Failure      500   {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang/{id}/photo [post]
+// @Security     ApiKeyAuth
 func (h *BarangPhotoHandler) UpdatePhoto(c *gin.Context) {
-	// Get ID from URL param
 	id := c.Param("id")
 	barangID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -31,14 +44,12 @@ func (h *BarangPhotoHandler) UpdatePhoto(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	var req barang.BarangPhotoRequest
 	if err := req.BindAndValidate(c); err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	// Upload foto
 	url, err := h.barangPhotoUsecase.UpdatePhoto(uint(barangID), req.File)
 	if err != nil {
 		utils.InternalError(c, err.Error())
@@ -50,9 +61,21 @@ func (h *BarangPhotoHandler) UpdatePhoto(c *gin.Context) {
 	}, "foto barang berhasil diupload")
 }
 
-// DeletePhoto - DELETE /admin/barang/:id/photo
+// DeletePhoto godoc
+// @Summary      Hapus foto barang
+// @Description  Menghapus foto utama barang (admin only)
+// @Tags         barang-photo
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "ID Barang"
+// @Success      200  {object}  map[string]interface{}  "Foto barang berhasil dihapus"
+// @Failure      400  {object}  map[string]interface{}  "Bad request - ID tidak valid"
+// @Failure      401  {object}  map[string]interface{}  "Unauthorized"
+// @Failure      404  {object}  map[string]interface{}  "Barang tidak ditemukan"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/admin/barang/{id}/photo [delete]
+// @Security     ApiKeyAuth
 func (h *BarangPhotoHandler) DeletePhoto(c *gin.Context) {
-	// Get ID from URL param
 	id := c.Param("id")
 	barangID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -60,7 +83,6 @@ func (h *BarangPhotoHandler) DeletePhoto(c *gin.Context) {
 		return
 	}
 
-	// Delete foto
 	err = h.barangPhotoUsecase.DeletePhoto(uint(barangID))
 	if err != nil {
 		utils.InternalError(c, err.Error())

@@ -18,6 +18,18 @@ func NewUpdateEmailHandler(u usecase.UpdateEmailUsecase) *UpdateEmailHandler {
 	}
 }
 
+// UpdateEmail godoc
+// @Summary      Update user email
+// @Description  Update email user yang sedang login
+// @Tags         user-profile
+// @Accept       json
+// @Produce      json
+// @Param        request  body  user.UpdateEmailRequest  true  "New email data"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Router       /api/user/email [post]
+// @Security     ApiKeyAuth
 func (h *UpdateEmailHandler) UpdateEmail(c *gin.Context) {
 	var request req.UpdateEmailRequest
 

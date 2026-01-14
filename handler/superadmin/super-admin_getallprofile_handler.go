@@ -2,73 +2,70 @@ package handler
 
 import (
 	request "backend/dto/request/user"
-	response "backend/dto/response/common"
 	usecase "backend/usecase/super_admin/getprofile"
 	"backend/utils"
-	"fmt"
 
-	"net/http"
-
-	"github.com/gin-gonic/gin" // Pake Gin!
+	"github.com/gin-gonic/gin"
 )
 
 type SuperAdminUserHandler struct {
-	UC usecase.SuperAdminGetUserUsecase
+	uc usecase.SuperAdminGetUserUsecase
 }
 
 func NewSuperAdminUserHandler(uc usecase.SuperAdminGetUserUsecase) *SuperAdminUserHandler {
-	return &SuperAdminUserHandler{UC: uc}
+	return &SuperAdminUserHandler{uc: uc}
 }
 
+//
+// ==========================
+// GET ALL USERS
+// ==========================
+
+// GetUsers godoc
+// @Summary      Get all users
+// @Description  Mengambil semua data user dengan filter dan pagination (super admin only)
+// @Tags         super-admin-user
+// @Produce      json
+// @Param        search   query  string  false  "Search by name/email/nim"
+// @Param        role     query  string  false  "Filter by role"
+// @Param        page     query  int     false  "Page number"
+// @Param        limit    query  int     false  "Items per page"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Failure      403      {object}  map[string]interface{}
+// @Router       /api/super-admin/user [get]
+// @Security     ApiKeyAuth
 func (h *SuperAdminUserHandler) GetUsers(c *gin.Context) {
-    // Get current user dari middleware/JWT
-    idRaw, exists := c.Get("user_id")
-    if !exists {
-       utils.Unauthorized(c, "unauthorized")
-        return
-    }
-    superAdminID := idRaw.(uint)
-    
-    // Parse filter dari query params
-    var filter request.UserFilter
-    if err := c.ShouldBindQuery(&filter); err != nil {
-        utils.BadRequest(c, err.Error())
-        return
-    }
+	idRaw, exists := c.Get("user_id")
+	if !exists {
+		utils.Unauthorized(c, "unauthorized")
+		return
+	}
+	superAdminID := idRaw.(uint)
 
-	fmt.Printf("Filter parsed: Search=%s, Page=%d, Limit=%d\n", filter.Search, filter.Page, filter.Limit)
+	var filter request.UserFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
 
-    // SET DEFAULT VALUES SEBELUM DIPAKE! ⚠️
-    if filter.Page <= 0 {
-        filter.Page = 1
-    }
-    if filter.Limit <= 0 {
-        filter.Limit = 10 // Default limit
-    }
+	filter.Page, filter.Limit = utils.ValidatePagination(filter.Page, filter.Limit)
 
-    // Call usecase
-    users, total, err := h.UC.GetUsers(superAdminID, filter)
-    if err != nil {
-        c.JSON(http.StatusForbidden, response.BaseResponse{
-            Status:  "error",
-            Message: err.Error(),
-        })
-        return
-    }
+	users, total, err := h.uc.GetUsers(superAdminID, filter)
+	if err != nil {
+		utils.Forbidden(c, err.Error())
+		return
+	}
 
-    // Calculate total pages (sekarang aman, limit pasti > 0)
-    totalPages := (total + filter.Limit - 1) / filter.Limit
+	totalPages := (total + filter.Limit - 1) / filter.Limit
 
-    // Return dengan PaginatedResponse
-    c.JSON(http.StatusOK, response.PaginatedResponse{
-        Status:  "success",
-        Message: "Users retrieved successfully",
-        Data:    users,
-        Pagination: response.Pagination{
-            Page:       filter.Page,
-            Limit:      filter.Limit,
-            TotalRows:  total,
-            TotalPages: totalPages,
-        },
-    })
+	pagination := map[string]interface{}{
+		"page":        filter.Page,
+		"limit":       filter.Limit,
+		"total_rows":  total,
+		"total_pages": totalPages,
+	}
+
+	utils.PaginatedSuccess(c, users, pagination, "Users retrieved successfully")
 }

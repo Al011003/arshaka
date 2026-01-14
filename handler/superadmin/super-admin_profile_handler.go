@@ -17,6 +17,16 @@ func NewSuperAdminProfileHandler(profileUC usecase.SuperAdminProfileUsecase) *Su
 	}
 }
 
+// GetProfile godoc
+// @Summary      Get super admin profile
+// @Description  Mengambil profil super admin yang sedang login
+// @Tags         super-admin-profile
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Router       /api/super-admin/profile [get]
+// @Security     ApiKeyAuth
 func (h *SuperAdminProfileHandler) GetProfile(c *gin.Context) {
 	idRaw, exists := c.Get("user_id")
 	if !exists {

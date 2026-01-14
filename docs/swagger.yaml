@@ -1,5 +1,11 @@
 basePath: /
 definitions:
+  angkatan.AngkatanMapalaRequest:
+    properties:
+      nama:
+        example: Mapala 2023
+        type: string
+    type: object
   auth.LoginRequest:
     properties:
       nra:
@@ -115,11 +121,164 @@ definitions:
       tahun_beli:
         type: integer
     type: object
+  cart.AddToCartRequest:
+    properties:
+      barang_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  cart.UpdateCartItemRequest:
+    properties:
+      quantity:
+        type: integer
+    type: object
+  data.FakultasRequest:
+    properties:
+      nama:
+        example: Fakultas Teknik
+        type: string
+    type: object
+  data.JurusanRequest:
+    properties:
+      fakultas_id:
+        example: 1
+        type: integer
+      nama:
+        example: Teknik Informatika
+        type: string
+    type: object
+  request.CreateLoanRequest:
+    properties:
+      end_date:
+        type: string
+      reason:
+        type: string
+      start_date:
+        type: string
+    type: object
+  request.ForgotPasswordRequest:
+    properties:
+      name:
+        type: string
+      nra:
+        type: string
+    type: object
+  request.LoanItemUpdate:
+    properties:
+      action:
+        type: string
+      barang_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  request.SaveDeviceTokenRequest:
+    properties:
+      device_token:
+        type: string
+      device_type:
+        description: android / ios
+        type: string
+    required:
+    - device_token
+    - device_type
+    type: object
+  request.UpdateLoanItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/request.LoanItemUpdate'
+        type: array
+    type: object
+  request.UpdateLoanRequest:
+    properties:
+      end_date:
+        type: string
+      reason:
+        type: string
+      start_date:
+        type: string
+    type: object
   response.BaseResponse:
     properties:
       data: {}
       message: {}
       status:
+        type: string
+    type: object
+  response.PaginatedResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+      status:
+        type: string
+    type: object
+  response.Pagination:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total_pages:
+        type: integer
+      total_rows:
+        type: integer
+    type: object
+  user.AdminSelfUpdateRequest:
+    properties:
+      nama:
+        type: string
+      nama_lengkap:
+        type: string
+      nra:
+        type: string
+    type: object
+  user.AdminUpdateUserRequest:
+    properties:
+      angkatan_kampus:
+        type: string
+      angkatan_mapala:
+        type: string
+      fakultas:
+        type: string
+      foto_url:
+        type: string
+      jurusan:
+        type: string
+      nama:
+        type: string
+      nama_lengkap:
+        type: string
+      nim:
+        type: string
+      no_hp:
+        type: string
+      nra:
+        type: string
+      status:
+        type: string
+    type: object
+  user.SuperAdminSelfUpdateRequest:
+    properties:
+      nama:
+        type: string
+      nama_lengkap:
+        type: string
+      nra:
+        type: string
+    type: object
+  user.UpdateEmailRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  user.UserUpdateRequest:
+    properties:
+      nama:
         type: string
     type: object
 info:
@@ -131,63 +290,139 @@ info:
   title: Backend API
   version: "1.0"
 paths:
-  /api/admin/barang:
+  /api/admin/angkatan-mapala:
     get:
-      consumes:
-      - application/json
-      description: Mengambil semua data barang dengan filter dan pagination
-      parameters:
-      - description: Filter by status (aktif/tidak_aktif)
-        in: query
-        name: status
-        type: string
-      - description: Filter by kategori
-        in: query
-        name: kategori
-        type: string
-      - description: Search by nama or kode
-        in: query
-        name: search
-        type: string
-      - description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Items per page (default: 10)'
-        in: query
-        name: limit
-        type: integer
-      - description: 'Sort field (default: created_at)'
-        in: query
-        name: sort_by
-        type: string
-      - description: 'Sort order: asc/desc (default: desc)'
-        in: query
-        name: sort_order
-        type: string
+      description: Admin mengambil semua data angkatan mapala
       produces:
       - application/json
       responses:
         "200":
-          description: Data barang berhasil diambil
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all angkatan mapala
+      tags:
+      - angkatan-mapala
+    post:
+      consumes:
+      - application/json
+      description: Admin membuat angkatan mapala baru
+      parameters:
+      - description: Angkatan mapala payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/angkatan.AngkatanMapalaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
-        "401":
-          description: Unauthorized
+      security:
+      - ApiKeyAuth: []
+      summary: Create angkatan mapala
+      tags:
+      - angkatan-mapala
+  /api/admin/angkatan-mapala/{id}:
+    delete:
+      description: Admin menghapus angkatan mapala
+      parameters:
+      - description: Angkatan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
           schema:
             additionalProperties: true
             type: object
-        "500":
-          description: Internal server error
+        "400":
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete angkatan mapala
+      tags:
+      - angkatan-mapala
+    put:
+      consumes:
+      - application/json
+      description: Admin update data angkatan mapala
+      parameters:
+      - description: Angkatan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/angkatan.AngkatanMapalaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update angkatan mapala
+      tags:
+      - angkatan-mapala
+  /api/admin/barang:
+    get:
+      description: Mengambil semua data barang dengan filter dan pagination
+      parameters:
+      - description: Filter status
+        in: query
+        name: status
+        type: string
+      - description: Filter kategori
+        in: query
+        name: kategori
+        type: string
+      - description: Search nama/kode
+        in: query
+        name: search
+        type: string
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses: {}
       security:
       - ApiKeyAuth: []
       summary: Get all barang
@@ -208,22 +443,12 @@ paths:
       - application/json
       responses:
         "201":
-          description: Barang berhasil dibuat
+          description: Created
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request - validation error
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
@@ -234,40 +459,28 @@ paths:
       - barang
   /api/admin/barang/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus barang berdasarkan ID (admin only)
+      description: Menghapus barang berdasarkan ID
       parameters:
       - description: Barang ID
         in: path
         name: id
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Barang berhasil dihapus
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request - ID tidak valid
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Barang tidak ditemukan
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             additionalProperties: true
             type: object
@@ -277,25 +490,23 @@ paths:
       tags:
       - barang
     get:
-      consumes:
-      - application/json
       description: Mengambil detail barang berdasarkan ID
       parameters:
       - description: Barang ID
         in: path
         name: id
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Data barang berhasil diambil
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request - ID tidak valid
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
@@ -305,12 +516,7 @@ paths:
             additionalProperties: true
             type: object
         "404":
-          description: Barang tidak ditemukan
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
+          description: Not Found
           schema:
             additionalProperties: true
             type: object
@@ -322,14 +528,14 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update data barang berdasarkan ID (admin only)
+      description: Update data barang berdasarkan ID
       parameters:
       - description: Barang ID
         in: path
         name: id
         required: true
-        type: string
-      - description: Updated barang data
+        type: integer
+      - description: Update data
         in: body
         name: request
         required: true
@@ -339,12 +545,46 @@ paths:
       - application/json
       responses:
         "200":
-          description: Barang berhasil diupdate
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request - validation error
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update barang
+      tags:
+      - barang
+  /api/admin/barang/{id}/photo:
+    delete:
+      consumes:
+      - application/json
+      description: Menghapus foto utama barang (admin only)
+      parameters:
+      - description: ID Barang
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Foto barang berhasil dihapus
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - ID tidak valid
           schema:
             additionalProperties: true
             type: object
@@ -365,9 +605,770 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Update barang
+      summary: Hapus foto barang
       tags:
-      - barang
+      - barang-photo
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload atau mengganti foto utama barang (admin only)
+      parameters:
+      - description: ID Barang
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Foto barang
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Foto barang berhasil diupload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - ID tidak valid / file tidak valid
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Barang tidak ditemukan
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Upload / Update foto barang
+      tags:
+      - barang-photo
+  /api/admin/fakultas:
+    get:
+      description: Mengambil seluruh data fakultas
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: Get All Fakultas
+      tags:
+      - Fakultas
+    post:
+      consumes:
+      - application/json
+      description: Menambahkan data fakultas baru
+      parameters:
+      - description: Payload fakultas
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/data.FakultasRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Fakultas
+      tags:
+      - Fakultas
+  /api/admin/fakultas/{id}:
+    delete:
+      description: Menghapus data fakultas
+      parameters:
+      - description: Fakultas ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Fakultas
+      tags:
+      - Fakultas
+    put:
+      consumes:
+      - application/json
+      description: Mengupdate data fakultas berdasarkan ID
+      parameters:
+      - description: Fakultas ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Payload fakultas
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/data.FakultasRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Fakultas
+      tags:
+      - Fakultas
+  /api/admin/jurusan:
+    get:
+      description: Mengambil semua data jurusan
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all jurusan
+      tags:
+      - jurusan
+    post:
+      consumes:
+      - application/json
+      description: Membuat jurusan baru (admin only)
+      parameters:
+      - description: Jurusan data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/data.JurusanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create new jurusan
+      tags:
+      - jurusan
+  /api/admin/jurusan/{id}:
+    delete:
+      description: Menghapus data jurusan berdasarkan ID
+      parameters:
+      - description: Jurusan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete jurusan
+      tags:
+      - jurusan
+    put:
+      consumes:
+      - application/json
+      description: Update data jurusan berdasarkan ID
+      parameters:
+      - description: Jurusan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Jurusan data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/data.JurusanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update jurusan
+      tags:
+      - jurusan
+  /api/admin/jurusan/fakultas/{fakultas_id}:
+    get:
+      description: Mengambil data jurusan berdasarkan fakultas ID
+      parameters:
+      - description: Fakultas ID
+        in: path
+        name: fakultas_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get jurusan by fakultas ID
+      tags:
+      - jurusan
+  /api/admin/profile:
+    get:
+      consumes:
+      - application/json
+      description: Mengambil data profile admin yang sedang login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Admin profile
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get admin profile
+      tags:
+      - admin-profile
+  /api/admin/update:
+    put:
+      consumes:
+      - application/json
+      description: Admin mengupdate data dirinya sendiri
+      parameters:
+      - description: Admin self update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.AdminSelfUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update admin profile
+      tags:
+      - admin-profile
+  /api/admin/user:
+    get:
+      consumes:
+      - application/json
+      description: Admin mengambil list user
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get list of users
+      tags:
+      - admin-user
+  /api/admin/user/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Admin mengambil detail user berdasarkan ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User detail
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user detail
+      tags:
+      - admin-user
+  /api/admin/user/update/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Admin mengupdate data user biasa (bukan admin / super admin)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update user payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.AdminUpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user by admin
+      tags:
+      - admin-user
+  /api/cart:
+    delete:
+      consumes:
+      - application/json
+      description: Menghapus seluruh item cart milik user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil mengosongkan cart
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Clear cart
+      tags:
+      - cart
+    get:
+      consumes:
+      - application/json
+      description: Mengambil semua item cart milik user yang sedang login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil mengambil cart
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get my cart
+      tags:
+      - cart
+    post:
+      consumes:
+      - application/json
+      description: Menambahkan barang ke dalam cart user
+      parameters:
+      - description: Data cart
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cart.AddToCartRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Berhasil menambahkan ke cart
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Add item to cart
+      tags:
+      - cart
+  /api/cart/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Menghapus satu item dari cart user
+      parameters:
+      - description: Cart Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil menghapus item
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Remove item from cart
+      tags:
+      - cart
+    put:
+      consumes:
+      - application/json
+      description: Mengupdate quantity atau data item di cart
+      parameters:
+      - description: Cart Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update cart item
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cart.UpdateCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil update cart item
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update cart item
+      tags:
+      - cart
+  /api/cart/count:
+    get:
+      consumes:
+      - application/json
+      description: Mengambil jumlah total item di cart user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil mengambil jumlah item
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get cart item count
+      tags:
+      - cart
+  /api/device-token:
+    post:
+      consumes:
+      - application/json
+      description: Menyimpan device token user untuk kebutuhan push notification (FCM/APNs)
+      parameters:
+      - description: Device token data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.SaveDeviceTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Device token berhasil disimpan
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Save device token
+      tags:
+      - device-token
+  /api/super-admin/profile:
+    get:
+      description: Mengambil profil super admin yang sedang login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get super admin profile
+      tags:
+      - super-admin-profile
   /api/super-admin/register-admin:
     post:
       consumes:
@@ -434,10 +1435,482 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - BearerAuth: []
+      - ApiKeyAuth: []
       summary: Register new user/anggota
       tags:
       - auth
+  /api/super-admin/reset-password:
+    get:
+      description: Mengambil semua request reset password dengan filter status (super
+        admin only)
+      parameters:
+      - description: Filter status (pending/approved/cancelled)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all reset password requests
+      tags:
+      - super-admin-reset-password
+  /api/super-admin/reset-password/approve/{resetID}:
+    post:
+      description: Menyetujui request reset password dan mereset password user (super
+        admin only)
+      parameters:
+      - description: Reset Request ID
+        in: path
+        name: resetID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Approve reset password request
+      tags:
+      - super-admin-reset-password
+  /api/super-admin/reset-password/cancel/{resetID}:
+    post:
+      description: Membatalkan request reset password (super admin only)
+      parameters:
+      - description: Reset Request ID
+        in: path
+        name: resetID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Cancel reset password request
+      tags:
+      - super-admin-reset-password
+  /api/super-admin/update:
+    put:
+      consumes:
+      - application/json
+      description: Update profil super admin sendiri (super admin only)
+      parameters:
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.SuperAdminSelfUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update super admin profile
+      tags:
+      - super-admin-profile
+  /api/super-admin/user:
+    get:
+      description: Mengambil semua data user dengan filter dan pagination (super admin
+        only)
+      parameters:
+      - description: Search by name/email/nim
+        in: query
+        name: search
+        type: string
+      - description: Filter by role
+        in: query
+        name: role
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all users
+      tags:
+      - super-admin-user
+  /api/super-admin/user/{id}:
+    get:
+      description: Mengambil detail user berdasarkan ID (super admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user detail by ID
+      tags:
+      - super-admin-user
+  /api/super-admin/user/delete/{id}:
+    delete:
+      description: Menghapus user berdasarkan ID (super admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete user
+      tags:
+      - super-admin-user
+  /api/user/email:
+    post:
+      consumes:
+      - application/json
+      description: Update email user yang sedang login
+      parameters:
+      - description: New email data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdateEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user email
+      tags:
+      - user-profile
+  /api/user/loan:
+    get:
+      description: Mengambil daftar peminjaman milik user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get my loans
+      tags:
+      - user-loan
+    post:
+      consumes:
+      - application/json
+      description: User membuat pengajuan peminjaman barang
+      parameters:
+      - description: Create loan request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateLoanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Loan berhasil dibuat
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create loan
+      tags:
+      - user-loan
+  /api/user/loan/{loan_code}:
+    delete:
+      description: Membatalkan peminjaman (selama masih pending)
+      parameters:
+      - description: Loan code
+        in: path
+        name: loan_code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Cancel loan
+      tags:
+      - user-loan
+    get:
+      description: Mengambil detail peminjaman berdasarkan loan code
+      parameters:
+      - description: Loan code
+        in: path
+        name: loan_code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get loan detail
+      tags:
+      - user-loan
+    put:
+      consumes:
+      - application/json
+      description: Update data header peminjaman (tanggal, catatan, dll)
+      parameters:
+      - description: Loan code
+        in: path
+        name: loan_code
+        required: true
+        type: string
+      - description: Update loan header
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateLoanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update loan header
+      tags:
+      - user-loan
+  /api/user/loan/{loan_code}/items:
+    put:
+      consumes:
+      - application/json
+      description: Update daftar barang dalam peminjaman
+      parameters:
+      - description: Loan code
+        in: path
+        name: loan_code
+        required: true
+        type: string
+      - description: Update loan items
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateLoanItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update loan items
+      tags:
+      - user-loan
   /api/user/password:
     post:
       consumes:
@@ -473,6 +1946,160 @@ paths:
       summary: Update user password
       tags:
       - auth
+  /api/user/profile:
+    get:
+      description: Mengambil profil user yang sedang login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile
+      tags:
+      - user-profile
+  /api/user/update:
+    put:
+      consumes:
+      - application/json
+      description: Update profil user yang sedang login
+      parameters:
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user profile
+      tags:
+      - user-profile
+  /api/user/update/photo/delete:
+    delete:
+      description: Menghapus foto profil user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete user profile photo
+      tags:
+      - user-profile
+  /api/user/update/photo/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload atau update foto profil user
+      parameters:
+      - description: Profile photo file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user profile photo
+      tags:
+      - user-profile
+  /auth/admin-reset:
+    post:
+      consumes:
+      - application/json
+      description: Admin mengajukan permintaan reset password berdasarkan identitas
+      parameters:
+      - description: Forgot password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Permintaan reset berhasil
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Request admin password reset
+      tags:
+      - admin-auth
   /auth/login:
     post:
       consumes:
