@@ -157,14 +157,7 @@ func (r *barangRepository) Update(barang *model.Barang) error {
 
 // Delete - soft delete barang (jika pakai gorm.DeletedAt) atau hard delete
 func (r *barangRepository) Delete(id uint) error {
-    result := r.db.Delete(&model.Barang{}, id)
-    if result.Error != nil {
-        return result.Error
-    }
-    if result.RowsAffected == 0 {
-        return errors.New("barang tidak ditemukan")
-    }
-    return nil
+    return r.db.Delete(&model.Barang{}, id).Error
 }
 
 // KurangiStok - mengurangi stok sisa (untuk peminjaman)

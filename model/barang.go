@@ -23,6 +23,7 @@ type Barang struct {
 	Status      string    `json:"status" gorm:"default:'tersedia'"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 func (Barang) TableName() string {
