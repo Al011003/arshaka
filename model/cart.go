@@ -27,6 +27,11 @@ type CartItem struct {
 	Quantity  int       `json:"quantity" gorm:"not null;default:1"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	BarangNama string
+	BarangKode string
+
+	
 }
 
 func (Cart) TableName() string {
