@@ -1,4 +1,3 @@
-// usecase/barang_photo_usecase.go
 package usecase
 
 import (
@@ -14,8 +13,8 @@ import (
 )
 
 type BarangPhotoUsecase interface {
-	UpdatePhoto(barangID uint, file *multipart.FileHeader) (string, error)
-	DeletePhoto(barangID uint) error
+	UpdatePhotoByKode(kode string, file *multipart.FileHeader) (string, error)
+	DeletePhotoByKode(kode string) error
 }
 
 type barangPhotoUsecase struct {
@@ -28,59 +27,65 @@ func NewBarangPhotoUsecase(barangRepo repo.BarangRepository) BarangPhotoUsecase 
 	}
 }
 
-func (u *barangPhotoUsecase) UpdatePhoto(barangID uint, file *multipart.FileHeader) (string, error) {
-	// Ambil data barang
-	barang, err := u.barangRepo.FindByID(barangID)
+// =====================
+// UPDATE PHOTO (BY KODE)
+// =====================
+func (u *barangPhotoUsecase) UpdatePhotoByKode(
+	kode string,
+	file *multipart.FileHeader,
+) (string, error) {
+
+	// Ambil barang via KODE
+	barang, err := u.barangRepo.FindByKode(kode)
 	if err != nil || barang == nil {
 		return "", errors.New("barang tidak ditemukan")
 	}
 
 	// Folder upload
 	uploadPath := "uploads/barang"
-	os.MkdirAll(uploadPath, os.ModePerm)
+	_ = os.MkdirAll(uploadPath, os.ModePerm)
 
-	// Hapus foto lama kalau ada
+	// Hapus foto lama jika ada
 	if barang.CoverURL != "" {
 		oldFile := "." + barang.CoverURL
-		_ = os.Remove(oldFile) // abaikan error
+		_ = os.Remove(oldFile)
 	}
 
-	// Generate nama file unik
-	filename := fmt.Sprintf("%d_%d%s",
-		barangID,
+	// Generate filename unik
+	filename := fmt.Sprintf(
+		"%s_%d%s",
+		kode,
 		time.Now().UnixNano(),
 		filepath.Ext(file.Filename),
 	)
+
 	fullPath := filepath.Join(uploadPath, filename)
 
-	// Open file (multipart)
+	// Open source file
 	src, err := file.Open()
 	if err != nil {
 		return "", errors.New("gagal membuka file upload")
 	}
 	defer src.Close()
 
-	// Buat file tujuan
+	// Create destination file
 	dst, err := os.Create(fullPath)
 	if err != nil {
 		return "", errors.New("gagal menyimpan file")
 	}
 	defer dst.Close()
 
-	// Copy isi file
-	_, err = io.Copy(dst, src)
-	if err != nil {
+	// Copy file
+	if _, err := io.Copy(dst, src); err != nil {
 		return "", errors.New("gagal menyalin file")
 	}
 
-	// URL yang disimpan ke DB
+	// URL untuk DB
 	url := "/uploads/barang/" + filename
 
 	// Update DB
 	barang.CoverURL = url
-	err = u.barangRepo.Update(barang)
-	if err != nil {
-		// Kalau gagal update DB, hapus file yang baru diupload
+	if err := u.barangRepo.Update(barang); err != nil {
 		_ = os.Remove(fullPath)
 		return "", errors.New("gagal menyimpan foto barang")
 	}
@@ -88,24 +93,24 @@ func (u *barangPhotoUsecase) UpdatePhoto(barangID uint, file *multipart.FileHead
 	return url, nil
 }
 
-func (u *barangPhotoUsecase) DeletePhoto(barangID uint) error {
-	barang, err := u.barangRepo.FindByID(barangID)
+// =====================
+// DELETE PHOTO (BY KODE)
+// =====================
+func (u *barangPhotoUsecase) DeletePhotoByKode(kode string) error {
+	barang, err := u.barangRepo.FindByKode(kode)
 	if err != nil || barang == nil {
 		return errors.New("barang tidak ditemukan")
 	}
 
-	// Cek apakah ada foto
 	if barang.CoverURL == "" {
 		return errors.New("barang tidak memiliki foto")
 	}
 
-	// Hapus file jika ada
-	if barang.CoverURL != "" {
-		oldFile := "." + barang.CoverURL
-		_ = os.Remove(oldFile) // abaikan error jika file tidak ada
-	}
+	// Hapus file
+	oldFile := "." + barang.CoverURL
+	_ = os.Remove(oldFile)
 
-	// Clear foto di DB
+	// Clear DB
 	barang.CoverURL = ""
 	return u.barangRepo.Update(barang)
 }

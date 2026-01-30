@@ -1,256 +1,359 @@
-// usecase/barang_usecase.go
 package usecase
 
 import (
-	requestBarang "backend/dto/request/barang"
+	request "backend/dto/request/barang"
 	responseBarang "backend/dto/response/barang"
 	response "backend/dto/response/common"
 	"backend/model"
 	"backend/repo"
 	"errors"
+	"fmt"
 )
 
 type BarangUseCase interface {
-	Create(req requestBarang.CreateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error)
-	GetByID(id uint, role string) (interface{}, error) // tetap interface karena beda response by role
-	GetAll(filter requestBarang.BarangFilter, role string) ([]responseBarang.BarangListResponse, *response.Pagination, error)
-	Update(id uint, req requestBarang.UpdateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error)
-	Delete(id uint) error
+	Create(req request.CreateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error)
+	GetByKode(kode string, role string) (interface{}, error)
+	GetAll(filter request.BarangFilter, role string) ([]responseBarang.BarangListResponse, *response.Pagination, error)
+	UpdateByKode(kode string, req request.UpdateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error)
+	DeleteByKode(kode string) error
+
+	GetBarangStatsByKode(kode string) (*responseBarang.BarangStatsResponse, error)
+	SetNonAktif(kode string) error // ← NEW
+	SetAktif(kode string) error    // ← NEW (optional, untuk reactivate)
+	CheckAndSuggestBarangStatus(kode string) (*responseBarang.BarangStatusSuggestion, error)
 }
 
 type barangUseCase struct {
 	barangRepo repo.BarangRepository
+	unitRepo   repo.BarangUnitRepository
 }
 
-func NewBarangUseCase(barangRepo repo.BarangRepository) BarangUseCase {
-	return &barangUseCase{
-		barangRepo: barangRepo,
+func NewBarangUseCase(
+	barangRepo repo.BarangRepository,
+	unitRepo repo.BarangUnitRepository,
+) BarangUseCase {
+	return &barangUseCase{barangRepo, unitRepo}
+}
+
+func (u *barangUseCase) GetBarangStatsByKode(kode string) (*responseBarang.BarangStatsResponse, error) {
+	barangID, err := u.barangRepo.GetIDByKode(kode)
+	if err != nil {
+		return nil, errors.New("barang tidak ditemukan")
 	}
-}
 
-//
-// 🔥 Helper: Convert Model → DTO Admin
-//
-func (u *barangUseCase) toAdminDetail(m *model.Barang) *responseBarang.BarangAdminDetailResponse {
-	return &responseBarang.BarangAdminDetailResponse{
-		ID:        m.ID,
-		Kode:      m.Kode,
-		Nama:      m.Nama,
-		Merk:      m.Merk,
-		Deskripsi: m.Deskripsi,
-		Kategori:  m.Kategori,
-		StokTotal: m.StokTotal,
-		StokSisa:  m.StokSisa,
-		Status:    m.Status, // ← TAMBAH INI
-		TahunBeli: m.TahunBeli,
-		HargaBeli: m.HargaBeli,
-		CoverURL:  m.CoverURL,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-	}
-}
-
-//
-// 🔥 Helper: Convert Model → DTO User
-//
-func (u *barangUseCase) toUserDetail(m *model.Barang) *responseBarang.BarangUserDetailResponse {
-	return &responseBarang.BarangUserDetailResponse{
-		ID:        m.ID,
-		Kode:      m.Kode,
-		Nama:      m.Nama,
-		Merk:      m.Merk,
-		Deskripsi: m.Deskripsi,
-		Kategori:  m.Kategori,
-		StokTotal: m.StokTotal,
-		StokSisa:  m.StokSisa,
-		Status:    m.Status, // ← TAMBAH INI
-		CoverURL:  m.CoverURL,
-	}
-}
-
-//
-// 🔥 Helper: List view
-//
-func (u *barangUseCase) toBarangListResponse(m *model.Barang) responseBarang.BarangListResponse {
-	return responseBarang.BarangListResponse{
-		ID:        m.ID,
-		Kode:      m.Kode,
-		Nama:      m.Nama,
-		Merk:      m.Merk,
-		Kategori:  m.Kategori,
-		StokTotal: m.StokTotal,
-		StokSisa:  m.StokSisa,
-		Status:    m.Status, // ← TAMBAH INI
-		CoverURL:  m.CoverURL,
-	}
-}
-
-//
-// 🔥 Create Barang
-//
-func (u *barangUseCase) Create(req requestBarang.CreateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error) {
-	// Validasi kode unik
-	exists, err := u.barangRepo.IsKodeExists(req.Kode)
+	total, err := u.unitRepo.CountTotal(barangID)
 	if err != nil {
 		return nil, err
 	}
+
+	available, err := u.unitRepo.CountAvailable(barangID)
+	if err != nil {
+		return nil, err
+	}
+
+	dipinjam, err := u.unitRepo.CountByStatus(barangID, model.UnitStatusDipinjam)
+	if err != nil {
+		return nil, err
+	}
+
+	maintenance, err := u.unitRepo.CountNeedsMaintenance(barangID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseBarang.BarangStatsResponse{
+		TotalUnit:   total,
+		Siap:        available,
+		Dipinjam:    dipinjam,
+		Maintenance: maintenance,
+	}, nil
+}
+
+//
+// ================= CRUD =================
+//
+
+func (u *barangUseCase) Create(req request.CreateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error) {
+	exists, _ := u.barangRepo.IsKodeExists(req.Kode)
 	if exists {
 		return nil, errors.New("kode barang sudah ada")
 	}
 
-	// Validasi stok (early validation)
-	if req.StokSisa > req.StokTotal {
-		return nil, errors.New("stok sisa tidak boleh lebih dari stok total")
-	}
-
-	// Map request ke model
-	newBarang := &model.Barang{
+	barang := &model.Barang{
 		Kode:      req.Kode,
 		Nama:      req.Nama,
 		Merk:      req.Merk,
 		Deskripsi: req.Deskripsi,
 		Kategori:  req.Kategori,
-		StokTotal: req.StokTotal,
-		StokSisa:  req.StokSisa,
-		TahunBeli: req.TahunBeli,
-		HargaBeli: req.HargaBeli,
-		CoverURL:  "",
-		// Status auto set di BeforeCreate hook (tersedia/habis)
+		Harga:     req.Harga,
+		Status:    model.BarangStatusAktif,
 	}
 
-	// Save ke database (BeforeCreate hook akan jalan otomatis)
-	if err := u.barangRepo.Create(newBarang); err != nil {
+	if err := u.barangRepo.Create(barang); err != nil {
 		return nil, err
 	}
 
-	// Convert ke response DTO
-	return u.toAdminDetail(newBarang), nil
+	return &responseBarang.BarangAdminDetailResponse{
+		ID:       barang.ID,
+		Kode:     barang.Kode,
+		Nama:     barang.Nama,
+		Kategori: barang.Kategori,
+		Status:   barang.Status,
+		Harga:    barang.Harga,
+		Stats:    &responseBarang.BarangStatsResponse{},
+	}, nil
 }
 
-//
-// 🔥 Get By ID — beda sesuai ROLE
-//
-func (u *barangUseCase) GetByID(id uint, role string) (interface{}, error) {
-	barang, err := u.barangRepo.FindByID(id)
+func (u *barangUseCase) GetByKode(kode string, role string) (interface{}, error) {
+	barang, err := u.barangRepo.FindByKode(kode)
 	if err != nil {
 		return nil, err
 	}
 
-	// User biasa cuma boleh lihat barang Tersedia/Habis
-	if role != "admin" && role != "superadmin" {
-		if barang.Status == "nonaktif" {
-			return nil, errors.New("barang tidak tersedia")
+	total, _ := u.unitRepo.CountTotal(barang.ID)
+	available, _ := u.unitRepo.CountAvailable(barang.ID)
+	
+	// ← Cek apakah semua unit nonaktif
+	allUnitsInactive := false
+	if total > 0 && available == 0 {
+		nonaktif, _ := u.unitRepo.CountByStatus(barang.ID, model.UnitStatusNonAktif)
+		if nonaktif == total {
+			allUnitsInactive = true
 		}
-		return u.toUserDetail(barang), nil
 	}
 
-	// Admin / superadmin dapat full detail
-	return u.toAdminDetail(barang), nil
-}
+	if role != "admin" {
+		return &responseBarang.BarangUserDetailResponse{
+			ID:            barang.ID,
+			Kode:          barang.Kode,          // ← TAMBAH
+			Nama:          barang.Nama,
+			Merk:          barang.Merk,          // ← TAMBAH
+			Deskripsi:     barang.Deskripsi,     // ← TAMBAH
+			Kategori:      barang.Kategori,      // ← TAMBAH
+			CoverURL:      barang.CoverURL,      // ← TAMBAH
+			Harga:         barang.Harga,         // ← TAMBAH (optional)
+			TotalUnit:     total,
+			AvailableUnit: available,
+		}, nil
+	}
 
-
-//
-// 🔥 Get All List
-//
-func (u *barangUseCase) GetAll(filter requestBarang.BarangFilter, role string) ([]responseBarang.BarangListResponse, *response.Pagination, error) {
-
-    if role != "admin" && role != "superadmin" {
-        if filter.Status == "" {
-            filter.Status = "tersedia,habis"
-        }
-    } else {}
-
-    barangs, pagination, err := u.barangRepo.FindAll(filter)
-    if err != nil {
-        return nil, nil, err
-    }
-
-    var out []responseBarang.BarangListResponse
-    for _, b := range barangs {
-        out = append(out, u.toBarangListResponse(&b))
-    }
-
-    return out, pagination, nil
-}
-
-
-
-//
-// 🔥 Update Barang
-//
-func (u *barangUseCase) Update(id uint, req requestBarang.UpdateBarangRequest) (*responseBarang.BarangAdminDetailResponse, error) {
-	// Cek barang exist
-	existingBarang, err := u.barangRepo.FindByID(id)
+	stats, err := u.GetBarangStatsByKode(kode)
 	if err != nil {
 		return nil, err
 	}
 
-	// Update HANYA field yang dikirim (tidak nil)
-	if req.Kode != nil {
-		// Validasi kode unik (kecuali kode yang sama)
-		if *req.Kode != existingBarang.Kode {
-			exists, err := u.barangRepo.IsKodeExists(*req.Kode)
-			if err != nil {
-				return nil, err
-			}
-			if exists {
-				return nil, errors.New("kode barang sudah ada")
-			}
-		}
-		existingBarang.Kode = *req.Kode
+	resp := MapBarangToDetailResponse(barang, stats)
+	resp.AllUnitsInactive = allUnitsInactive // ← tambah field ini
+	
+	return &resp, nil
+}
+func (u *barangUseCase) GetAll(
+	filter request.BarangFilter,
+	role string,
+) ([]responseBarang.BarangListResponse, *response.Pagination, error) {
+
+	if role != "admin" {
+		filter.Status = model.BarangStatusAktif
+	}
+
+	list, pag, err := u.barangRepo.FindAll(filter)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var out []responseBarang.BarangListResponse
+	for _, b := range list {
+		total, _ := u.unitRepo.CountTotal(b.ID)
+		available, _ := u.unitRepo.CountAvailable(b.ID)
+
+		out = append(out, MapBarangToListResponse(b, total, available))
+	}
+
+	return out, pag, nil
+}
+
+func (u *barangUseCase) UpdateByKode(
+	kode string,
+	req request.UpdateBarangRequest,
+) (*responseBarang.BarangAdminDetailResponse, error) {
+
+	barang, err := u.barangRepo.FindByKode(kode)
+	if err != nil {
+		return nil, err
 	}
 
 	if req.Nama != nil {
-		existingBarang.Nama = *req.Nama
+		barang.Nama = *req.Nama
 	}
 	if req.Merk != nil {
-		existingBarang.Merk = *req.Merk
+		barang.Merk = *req.Merk
 	}
 	if req.Deskripsi != nil {
-		existingBarang.Deskripsi = *req.Deskripsi
+		barang.Deskripsi = *req.Deskripsi
 	}
 	if req.Kategori != nil {
-		existingBarang.Kategori = *req.Kategori
-	}
-	if req.StokTotal != nil {
-		existingBarang.StokTotal = *req.StokTotal
-	}
-	if req.StokSisa != nil {
-		existingBarang.StokSisa = *req.StokSisa
-	}
-	if req.TahunBeli != nil {
-		existingBarang.TahunBeli = *req.TahunBeli
-	}
-	if req.HargaBeli != nil {
-		existingBarang.HargaBeli = *req.HargaBeli
+		barang.Kategori = *req.Kategori
 	}
 	if req.Status != nil {
-		existingBarang.Status = *req.Status
+		barang.Status = *req.Status
+	}
+	if req.Harga != nil {
+		barang.Harga = *req.Harga
 	}
 
-	// Validasi stok setelah semua field di-update
-	if existingBarang.StokSisa > existingBarang.StokTotal {
-		return nil, errors.New("stok sisa tidak boleh melebihi stok total")
-	}
-
-	// Save ke database (BeforeUpdate hook akan jalan otomatis untuk set status)
-	if err := u.barangRepo.Update(existingBarang); err != nil {
+	if err := u.barangRepo.Update(barang); err != nil {
 		return nil, err
 	}
 
-	// Convert ke response DTO
-	return u.toAdminDetail(existingBarang), nil
+	stats, _ := u.GetBarangStatsByKode(kode)
+	resp := MapBarangToDetailResponse(barang, stats)
+	return &resp, nil
 }
 
-//
-// 🔥 Delete
-//
-func (u *barangUseCase) Delete(id uint) error {
-	// Cek barang exist
-	_, err := u.barangRepo.FindByID(id)
+func (u *barangUseCase) DeleteByKode(kode string) error {
+	barangID, err := u.barangRepo.GetIDByKode(kode)
 	if err != nil {
+		return errors.New("barang tidak ditemukan")
+	}
+
+	dipinjam, _ := u.unitRepo.CountByStatus(barangID, model.UnitStatusDipinjam)
+	if dipinjam > 0 {
+		return errors.New("barang masih dipinjam")
+	}
+
+	return u.barangRepo.DeleteByKode(kode)
+}
+
+func (u *barangUseCase) SetNonAktif(kode string) error {
+	barang, err := u.barangRepo.FindByKode(kode)
+	if err != nil {
+		return errors.New("barang tidak ditemukan")
+	}
+
+	// Cek apakah ada unit yang sedang dipinjam
+	dipinjam, _ := u.unitRepo.CountByStatus(barang.ID, model.UnitStatusDipinjam)
+	if dipinjam > 0 {
+		return errors.New("tidak bisa menonaktifkan barang: masih ada unit yang sedang dipinjam")
+	}
+
+	// Set barang jadi nonaktif
+	barang.Status = model.BarangStatusNonAktif
+	if err := u.barangRepo.Update(barang); err != nil {
 		return err
 	}
 
-	return u.barangRepo.Delete(id)
+	// Cascade: set semua unit jadi nonaktif
+	if err := u.unitRepo.SetAllStatusByBarangID(barang.ID, model.UnitStatusNonAktif); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *barangUseCase) SetAktif(kode string) error {
+	barang, err := u.barangRepo.FindByKode(kode)
+	if err != nil {
+		return errors.New("barang tidak ditemukan")
+	}
+
+	// Set barang jadi aktif
+	barang.Status = model.BarangStatusAktif
+	if err := u.barangRepo.Update(barang); err != nil {
+		return err
+	}
+
+	// Cascade: set semua unit kembali ke status normal
+	// Units akan auto-compute statusnya berdasarkan kondisi (via BeforeSave hook)
+	// Kita perlu trigger update untuk setiap unit
+	if err := u.unitRepo.ReactivateAllByBarangID(barang.ID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// usecase/barang/barang.go
+
+// CheckAndSuggestBarangStatus - cek apakah barang perlu dinonaktifkan
+func (u *barangUseCase) CheckAndSuggestBarangStatus(kode string) (*responseBarang.BarangStatusSuggestion, error) {
+	barang, err := u.barangRepo.FindByKode(kode)
+	if err != nil {
+		return nil, errors.New("barang tidak ditemukan")
+	}
+
+	total, _ := u.unitRepo.CountTotal(barang.ID)
+	
+	// Case 1: Tidak ada unit sama sekali
+	if total == 0 {
+		shouldChange := barang.Status != model.BarangStatusNonAktif // ← FIX
+		return &responseBarang.BarangStatusSuggestion{
+			CurrentStatus:   barang.Status,
+			SuggestedStatus: model.BarangStatusNonAktif,
+			Reason:          "Tidak ada unit sama sekali",
+			ShouldChange:    shouldChange,
+		}, nil
+	}
+
+	nonaktif, _ := u.unitRepo.CountByStatus(barang.ID, model.UnitStatusNonAktif)
+	
+	// Case 2: Semua unit nonaktif
+	if nonaktif == total {
+		shouldChange := barang.Status != model.BarangStatusNonAktif // ← FIX
+		return &responseBarang.BarangStatusSuggestion{
+			CurrentStatus:   barang.Status,
+			SuggestedStatus: model.BarangStatusNonAktif,
+			Reason:          fmt.Sprintf("Semua unit (%d) sudah nonaktif", total),
+			ShouldChange:    shouldChange,
+		}, nil
+	}
+
+	// Case 3: Ada unit yang masih aktif
+	shouldChange := barang.Status != model.BarangStatusAktif // ← FIX
+	return &responseBarang.BarangStatusSuggestion{
+		CurrentStatus:   barang.Status,
+		SuggestedStatus: model.BarangStatusAktif,
+		Reason:          fmt.Sprintf("%d dari %d unit masih aktif", total-nonaktif, total),
+		ShouldChange:    shouldChange,
+	}, nil
+}
+//
+// ================= MAPPER =================
+//
+
+func MapBarangToListResponse(
+	b model.Barang,
+	total, available int64,
+) responseBarang.BarangListResponse {
+	return responseBarang.BarangListResponse{
+		ID:            b.ID,
+		Kode:          b.Kode,
+		Nama:          b.Nama,
+		Merk:          b.Merk,
+		Kategori:      b.Kategori,
+		Status:        b.Status,
+		CoverURL:      b.CoverURL,
+		Harga:         b.Harga,
+		TotalUnit:     total,
+		AvailableUnit: available,
+	}
+}
+
+func MapBarangToDetailResponse(
+	b *model.Barang,
+	stats *responseBarang.BarangStatsResponse,
+) responseBarang.BarangAdminDetailResponse {
+	return responseBarang.BarangAdminDetailResponse{
+		ID:        b.ID,
+		Kode:      b.Kode,
+		Nama:      b.Nama,
+		Merk:      b.Merk,
+		Deskripsi: b.Deskripsi,
+		Kategori:  b.Kategori,
+		Status:    b.Status,
+		CoverURL:  b.CoverURL,
+		Harga:     b.Harga,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+		Stats:     stats,
+	}
 }

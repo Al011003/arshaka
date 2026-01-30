@@ -1,21 +1,22 @@
 // ========== RESPONSE DTOs ==========
 package cart
 
-// BarangInCartResponse - Info barang di cart (nested)
+// dto/response/cart/cart.go
+
 type BarangInCartResponse struct {
 	ID       uint   `json:"id"`
 	Kode     string `json:"kode"`
 	Nama     string `json:"nama"`
 	Merk     string `json:"merk"`
 	Kategori string `json:"kategori"`
-	StokTotal int   `json:"stok_total"`
-	StokSisa  int   `json:"stok_sisa"`
-	CoverURL  string `json:"cover_url"`
-	Status    string `json:"status"`
-
-	// === RUNTIME VALIDATION (NEW) ===
-	IsAvailable bool   `json:"is_available"`
-	Issue       string `json:"issue,omitempty"`
+	CoverURL string `json:"cover_url"`
+	Status   string `json:"status"`
+	
+	// ✅ Unit-based (bukan stok lagi)
+	TotalUnits     int  `json:"total_units"`
+	AvailableUnits int  `json:"available_units"`
+	IsAvailable    bool `json:"is_available"`
+	Issue          string `json:"issue,omitempty"`
 }
 
 // CartItemResponse - Response untuk single cart item

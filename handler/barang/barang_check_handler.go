@@ -1,7 +1,7 @@
+// handler/barang_check_avail_handler.go
 package handler
 
 import (
-	"strconv"
 	"time"
 
 	usecase "backend/usecase/barang"
@@ -18,25 +18,53 @@ func NewBarangAvailabilityHandler(availUC usecase.AvailabilityUseCase) *BarangAv
 	return &BarangAvailabilityHandler{availabilityUC: availUC}
 }
 
-// GET /api/barang/availabilitycheck/:id?start_date=yyyy-mm-dd&end_date=yyyy-mm-dd
+// handler/availability_handler.go
+
+// GetCalendar godoc
+// @Summary      Get availability calendar
+// @Description  Mendapatkan kalender ketersediaan barang untuk bulan tertentu
+// @Tags         availability
+// @Produce      json
+// @Param        kode path string true "kode barang"
+// @Param        month query string false "month (YYYY-MM)" default(current month)
+// @Success      200 {object} map[string]interface{}
+// @Router       /api/availability/{kode}/calendar [get]
 func (h *BarangAvailabilityHandler) GetCalendar(c *gin.Context) {
-	idStr := c.Param("barang_id")
-	barangID, err := strconv.ParseUint(idStr, 10, 32)
+	kode := c.Param("kode")
+	month := c.DefaultQuery("month", time.Now().Format("2006-01"))
+
+	result, err := h.availabilityUC.GetCalendarSummary(kode, month)
 	if err != nil {
-		utils.BadRequest(c, "id barang tidak valid")
+		utils.NotFound(c, err.Error())
 		return
 	}
 
-	month := c.Query("month")
-	if month == "" {
-		month = time.Now().Format("2006-01")
-	}
+	utils.Success(c, result, "availability calendar")
+}
 
-	result, err := h.availabilityUC.GetCalendarSummary(uint(barangID), month)
-	if err != nil {
-		utils.InternalError(c, err.Error())
+// GetDateDetail godoc
+// @Summary      Get date detail
+// @Description  Mendapatkan detail ketersediaan barang pada tanggal tertentu
+// @Tags         availability
+// @Produce      json
+// @Param        kode path string true "kode barang"
+// @Param        date query string true "date (YYYY-MM-DD)"
+// @Success      200 {object} map[string]interface{}
+// @Router       /api/availability/{kode}/date [get]
+func (h *BarangAvailabilityHandler) GetDateDetail(c *gin.Context) {
+	kode := c.Param("kode")
+	date := c.Query("date")
+
+	if date == "" {
+		utils.BadRequest(c, "parameter date wajib diisi")
 		return
 	}
 
-	utils.Success(c, result, "berhasil ambil kalender ketersediaan")
+	result, err := h.availabilityUC.GetDateDetail(kode, date)
+	if err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+
+	utils.Success(c, result, "date detail")
 }

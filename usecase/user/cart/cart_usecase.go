@@ -23,15 +23,18 @@ type CartUsecase interface {
 type cartUsecase struct {
 	cartRepo   repository.CartRepository
 	barangRepo repository.BarangRepository
+	unitRepo   repository.BarangUnitRepository // ← TAMBAH INI
 }
 
 func NewCartUsecase(
 	cartRepo repository.CartRepository,
 	barangRepo repository.BarangRepository,
+	unitRepo repository.BarangUnitRepository, // ← TAMBAH INI
 ) CartUsecase {
 	return &cartUsecase{
 		cartRepo:   cartRepo,
 		barangRepo: barangRepo,
+		unitRepo:   unitRepo,
 	}
 }
 
@@ -61,45 +64,54 @@ func (u *cartUsecase) GetMyCart(userID uint) (*res.CartResponse, error) {
 		if item.Barang == nil || item.Barang.Status == "nonaktif" {
 			_ = u.cartRepo.DeleteCartItem(item.ID)
 
+			barangNama := "Unknown"
+			if item.Barang != nil {
+				barangNama = item.Barang.Nama
+			}
+
 			removed = append(removed, res.RemovedItem{
 				BarangID: item.BarangID,
-				Nama:     item.BarangNama,
+				Nama:     barangNama,
 				Reason:   "BARANG_TIDAK_TERSEDIA",
 			})
 			continue
 		}
 
 		// ===============================
-		// STOK TOTAL = 0 → AUTO ADJUST
+		// CEK TOTAL UNITS (pengganti StokTotal)
 		// ===============================
-		if item.Barang.StokTotal == 0 && item.Quantity > 0 {
+		totalUnits, err := u.unitRepo.CountTotal(item.BarangID)
+		if err != nil {
+			continue // Skip kalau error
+		}
+
+		// Total units = 0 → AUTO ADJUST
+		if totalUnits == 0 && item.Quantity > 0 {
 			oldQty := item.Quantity
 			item.Quantity = 0
 			_ = u.cartRepo.UpdateCartItem(&item)
 
 			adjusted = append(adjusted, res.QuantityChanged{
 				BarangID: item.BarangID,
-				Nama:     item.BarangNama,
+				Nama:     item.Barang.Nama,
 				From:     oldQty,
 				To:       0,
-				Reason:   "STOK_KOSONG",
+				Reason:   "TIDAK_ADA_UNIT",
 			})
 		}
 
-		// ===============================
-		// STOK TOTAL BERKURANG
-		// ===============================
-		if item.Quantity > item.Barang.StokTotal {
+		// Total units berkurang
+		if item.Quantity > int(totalUnits) {
 			oldQty := item.Quantity
-			item.Quantity = item.Barang.StokTotal
+			item.Quantity = int(totalUnits)
 			_ = u.cartRepo.UpdateCartItem(&item)
 
 			adjusted = append(adjusted, res.QuantityChanged{
 				BarangID: item.BarangID,
-				Nama:     item.BarangNama,
+				Nama:     item.Barang.Nama,
 				From:     oldQty,
 				To:       item.Quantity,
-				Reason:   "STOK_TOTAL_BERUBAH",
+				Reason:   "JUMLAH_UNIT_BERUBAH",
 			})
 		}
 
@@ -107,7 +119,7 @@ func (u *cartUsecase) GetMyCart(userID uint) (*res.CartResponse, error) {
 	}
 
 	cart.CartItems = validItems
-	resp := toCartResponse(cart)
+	resp := toCartResponse(cart, u.unitRepo)
 
 	if len(removed) > 0 || len(adjusted) > 0 {
 		resp.Adjustments = &res.CartAdjustmentResponse{
@@ -119,13 +131,13 @@ func (u *cartUsecase) GetMyCart(userID uint) (*res.CartResponse, error) {
 	return resp, nil
 }
 
-
 // AddToCart - Tambah barang ke cart
 func (u *cartUsecase) AddToCart(
 	userID uint,
 	req req.AddToCartRequest,
 ) (*res.CartItemResponse, error) {
 
+	// 1. Validasi barang exists & aktif
 	barang, err := u.barangRepo.FindByID(req.BarangID)
 	if err != nil {
 		return nil, errors.New("barang tidak ditemukan")
@@ -139,28 +151,35 @@ func (u *cartUsecase) AddToCart(
 		return nil, errors.New("quantity tidak valid")
 	}
 
-	// ===============================
-	// VALIDASI STOK (STRICT)
-	// ===============================
-	if req.Quantity > barang.StokTotal {
-		return nil, errors.New("stok barang tidak mencukupi")
+	// 2. Cek total units (pengganti stok total)
+	totalUnits, err := u.unitRepo.CountTotal(req.BarangID)
+	if err != nil {
+		return nil, err
 	}
 
+	if totalUnits == 0 {
+		return nil, errors.New("tidak ada unit tersedia untuk barang ini")
+	}
+
+	if req.Quantity > int(totalUnits) {
+		return nil, errors.New("jumlah unit tidak mencukupi")
+	}
+
+	// 3. Get or create cart
 	cart, err := u.cartRepo.GetOrCreateCart(userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// ===============================
-	// ITEM SUDAH ADA
-	// ===============================
-	existing, err := u.cartRepo.GetCartItem(cart.ID, barang.ID)
-	if err == nil {
-
+	// 4. Cek apakah item sudah ada
+	existing, _ := u.cartRepo.GetCartItem(cart.ID, barang.ID)
+	
+	if existing != nil {
+		// Item sudah ada, update quantity
 		newQty := existing.Quantity + req.Quantity
 
-		if newQty > barang.StokTotal {
-			return nil, errors.New("stok barang tidak mencukupi")
+		if newQty > int(totalUnits) {
+			return nil, errors.New("jumlah unit tidak mencukupi")
 		}
 
 		existing.Quantity = newQty
@@ -169,18 +188,14 @@ func (u *cartUsecase) AddToCart(
 		}
 
 		item, _ := u.cartRepo.GetCartItemByIDWithBarang(existing.ID, cart.ID)
-		return toCartItemResponse(item), nil
+		return toCartItemResponse(item, u.unitRepo), nil
 	}
 
-	// ===============================
-	// CREATE BARU
-	// ===============================
+	// 5. Create baru
 	cartItem := &model.CartItem{
-		CartID:     cart.ID,
-		BarangID:   barang.ID,
-		BarangNama: barang.Nama, // snapshot
-		BarangKode: barang.Kode, // snapshot
-		Quantity:   req.Quantity,
+		CartID:   cart.ID,
+		BarangID: barang.ID,
+		Quantity: req.Quantity,
 	}
 
 	if err := u.cartRepo.AddItemToCart(cartItem); err != nil {
@@ -188,25 +203,26 @@ func (u *cartUsecase) AddToCart(
 	}
 
 	item, _ := u.cartRepo.GetCartItemByIDWithBarang(cartItem.ID, cart.ID)
-	return toCartItemResponse(item), nil
+	return toCartItemResponse(item, u.unitRepo), nil
 }
 
-
-
 // UpdateCartItem - Update cart item
-func (u *cartUsecase) UpdateCartItem(userID, cartItemID uint, req req.UpdateCartItemRequest) (*res.CartItemResponse, error) {
+func (u *cartUsecase) UpdateCartItem(
+	userID, cartItemID uint,
+	req req.UpdateCartItemRequest,
+) (*res.CartItemResponse, error) {
 
 	if req.Quantity <= 0 {
 		return nil, errors.New("quantity harus lebih dari 0")
 	}
 
-	// 2. Get cart user
+	// 1. Get cart user
 	cart, err := u.cartRepo.GetCartByUserID(userID)
 	if err != nil {
 		return nil, errors.New("cart tidak ditemukan")
 	}
 
-	// 3. Get cart item (ownership check)
+	// 2. Get cart item (ownership check)
 	cartItem, err := u.cartRepo.GetCartItemByID(cartItemID, cart.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -215,49 +231,48 @@ func (u *cartUsecase) UpdateCartItem(userID, cartItemID uint, req req.UpdateCart
 		return nil, err
 	}
 
-	// 4. Get barang (buat cek stok & status)
+	// 3. Get barang (buat cek status)
 	barang, err := u.barangRepo.FindByID(cartItem.BarangID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("barang tidak ditemukan")
-		}
-		return nil, err
+		return nil, errors.New("barang tidak ditemukan")
 	}
 
-	// 5. Validasi status barang
 	if barang.Status == "nonaktif" {
 		return nil, errors.New("barang tidak aktif")
 	}
 
-	// 6. VALIDASI STOK
-	if req.Quantity > barang.StokTotal {
-		return nil, errors.New("stok barang tidak mencukupi")
+	// 4. Cek total units
+	totalUnits, err := u.unitRepo.CountTotal(cartItem.BarangID)
+	if err != nil {
+		return nil, err
 	}
 
-	// 7. Update quantity
+	if req.Quantity > int(totalUnits) {
+		return nil, errors.New("jumlah unit tidak mencukupi")
+	}
+
+	// 5. Update quantity
 	cartItem.Quantity = req.Quantity
 	if err := u.cartRepo.UpdateCartItem(cartItem); err != nil {
 		return nil, err
 	}
 
-	// 8. Return updated item
+	// 6. Return updated item
 	updatedItem, err := u.cartRepo.GetCartItemByIDWithBarang(cartItem.ID, cart.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return toCartItemResponse(updatedItem), nil
+	return toCartItemResponse(updatedItem, u.unitRepo), nil
 }
 
 // RemoveFromCart - Hapus item dari cart
 func (u *cartUsecase) RemoveFromCart(userID, cartItemID uint) error {
-	// 1. Get cart user
 	cart, err := u.cartRepo.GetCartByUserID(userID)
 	if err != nil {
 		return errors.New("cart tidak ditemukan")
 	}
 
-	// 2. Validasi cart item belongs to user
 	_, err = u.cartRepo.GetCartItemByID(cartItemID, cart.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -266,7 +281,6 @@ func (u *cartUsecase) RemoveFromCart(userID, cartItemID uint) error {
 		return err
 	}
 
-	// 3. Delete cart item
 	return u.cartRepo.DeleteCartItem(cartItemID)
 }
 
@@ -275,7 +289,7 @@ func (u *cartUsecase) ClearMyCart(userID uint) error {
 	cart, err := u.cartRepo.GetCartByUserID(userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil // Cart belum ada, gak perlu clear
+			return nil
 		}
 		return err
 	}
@@ -288,7 +302,6 @@ func (u *cartUsecase) GetCartItemCount(userID uint) (*res.CartSummaryResponse, e
 	cart, err := u.cartRepo.GetCartByUserID(userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Cart belum ada, return empty summary
 			return &res.CartSummaryResponse{
 				UserID:     userID,
 				TotalItems: 0,
@@ -311,12 +324,11 @@ func (u *cartUsecase) GetCartItemCount(userID uint) (*res.CartSummaryResponse, e
 
 // ========== HELPER FUNCTIONS (Converters) ==========
 
-// toCartResponse - Convert model.Cart ke dto.CartResponse
-func toCartResponse(cart *model.Cart) *res.CartResponse {
+func toCartResponse(cart *model.Cart, unitRepo repository.BarangUnitRepository) *res.CartResponse {
 	cartItems := make([]res.CartItemResponse, 0, len(cart.CartItems))
 	
 	for _, item := range cart.CartItems {
-		cartItems = append(cartItems, *toCartItemResponse(&item))
+		cartItems = append(cartItems, *toCartItemResponse(&item, unitRepo))
 	}
 
 	return &res.CartResponse{
@@ -327,53 +339,30 @@ func toCartResponse(cart *model.Cart) *res.CartResponse {
 	}
 }
 
-// toCartItemResponse - Convert model.CartItem ke dto.CartItemResponse
-
-func mapBarangToCartResponse(b *model.Barang, qty int) *res.BarangInCartResponse {
-	resp := &res.BarangInCartResponse{
-		ID:          b.ID,
-		Kode:        b.Kode,
-		Nama:        b.Nama,
-		Merk:        b.Merk,
-		Kategori:    b.Kategori,
-		StokTotal:   b.StokTotal,
-		StokSisa:    b.StokSisa,
-		CoverURL:    b.CoverURL,
-		Status:      b.Status,
-		IsAvailable: true,
-	}
-
-	if b.Status != "aktif" {
-		resp.IsAvailable = false
-		resp.Issue = "BARANG_NONAKTIF"
-	} else if b.StokSisa == 0 {
-		resp.IsAvailable = false
-		resp.Issue = "STOK_HABIS"
-	} else if b.StokSisa < qty {
-		resp.IsAvailable = false
-		resp.Issue = "STOK_TIDAK_CUKUP"
-	}
-
-	return resp
-}
-
-func toCartItemResponse(item *model.CartItem) *res.CartItemResponse {
+func toCartItemResponse(
+	item *model.CartItem,
+	unitRepo repository.BarangUnitRepository,
+) *res.CartItemResponse {
 	var barangResp *res.BarangInCartResponse
 
 	if item.Barang != nil {
+		// Get unit stats
+		totalUnits, _ := unitRepo.CountTotal(item.BarangID)
+		availableUnits, _ := unitRepo.CountAvailable(item.BarangID)
+		
 		barangResp = &res.BarangInCartResponse{
-			ID:          item.Barang.ID,
-			Kode:        item.Barang.Kode,
-			Nama:        item.Barang.Nama,
-			Merk:        item.Barang.Merk,
-			Kategori:    item.Barang.Kategori,
-			StokTotal:   item.Barang.StokTotal,
-			StokSisa:    item.Barang.StokSisa,
-			CoverURL:    item.Barang.CoverURL,
-			Status:      item.Barang.Status,
-
-			// 🔥 PENTING
-			IsAvailable: true,
+			ID:       item.Barang.ID,
+			Kode:     item.Barang.Kode,
+			Nama:     item.Barang.Nama,
+			Merk:     item.Barang.Merk,
+			Kategori: item.Barang.Kategori,
+			CoverURL: item.Barang.CoverURL,
+			Status:   item.Barang.Status,
+			
+			// ✅ Unit-based info
+			TotalUnits:     int(totalUnits),
+			AvailableUnits: int(availableUnits),
+			IsAvailable:    true,
 		}
 
 		// ===============================
@@ -382,16 +371,16 @@ func toCartItemResponse(item *model.CartItem) *res.CartItemResponse {
 		if item.Barang.Status == "nonaktif" {
 			barangResp.IsAvailable = false
 			barangResp.Issue = "BARANG_NONAKTIF"
-		}
-
-		if item.Quantity > item.Barang.StokTotal {
+		} else if totalUnits == 0 {
 			barangResp.IsAvailable = false
-			barangResp.Issue = "STOK_TOTAL_TIDAK_CUKUP"
-		}
-
-		if item.Barang.StokTotal == 0 {
+			barangResp.Issue = "TIDAK_ADA_UNIT"
+		} else if item.Quantity > int(totalUnits) {
 			barangResp.IsAvailable = false
-			barangResp.Issue = "STOK_KOSONG"
+			barangResp.Issue = "JUMLAH_UNIT_TIDAK_CUKUP"
+		} else if availableUnits == 0 {
+			// Semua unit dipinjam (tapi ini cuma warning, bukan error)
+			// Karena belum tau tanggal pinjam
+			barangResp.Issue = "SEMUA_UNIT_SEDANG_DIPINJAM"
 		}
 	}
 

@@ -1,4 +1,3 @@
-// dto/request/barang/update.go
 package barang
 
 import (
@@ -9,59 +8,33 @@ import (
 )
 
 type UpdateBarangRequest struct {
-	Kode      *string  `json:"kode,omitempty"`
-	Nama      *string  `json:"nama,omitempty"`
-	Merk      *string  `json:"merk,omitempty"`
-	Deskripsi *string  `json:"deskripsi,omitempty"`
-	Kategori  *string  `json:"kategori,omitempty"`
-	StokTotal *int     `json:"stok_total,omitempty"`
-	StokSisa  *int     `json:"stok_sisa,omitempty"`
-	Status    *string  `json:"status,omitempty"` // ← TAMBAH INI
-	TahunBeli *int     `json:"tahun_beli,omitempty"`
-	HargaBeli *float64 `json:"harga_beli,omitempty"`
+	Kode      *string `json:"kode"`
+	Nama      *string `json:"nama"`
+	Merk      *string `json:"merk"`
+	Deskripsi *string `json:"deskripsi"`
+	Kategori  *string `json:"kategori"`
+	Status    *string `json:"status"`
+	Harga *float64 `json:"harga"`
 }
 
 func (r *UpdateBarangRequest) BindAndValidate(c *gin.Context) error {
 	if err := c.ShouldBindJSON(r); err != nil {
-		return errors.New("payload tidak valid")
+		return errors.New("format request tidak valid")
 	}
 
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Kode,
-			validation.Length(1, 50).Error("kode harus 1-50 karakter"),
+			validation.Length(1, 50).Error("kode maksimal 50 karakter"),
 		),
 		validation.Field(&r.Nama,
-			validation.Length(1, 200).Error("nama harus 1-200 karakter"),
+			validation.Length(1, 200).Error("nama maksimal 200 karakter"),
 		),
 		validation.Field(&r.Merk,
 			validation.Length(0, 100).Error("merk maksimal 100 karakter"),
 		),
 		validation.Field(&r.Kategori,
-			validation.Length(1, 100).Error("kategori harus 1-100 karakter"),
+			validation.Length(1, 100).Error("kategori maksimal 100 karakter"),
 		),
-		validation.Field(&r.StokTotal,
-			validation.Min(0).Error("stok total tidak boleh negatif"),
-		),
-		validation.Field(&r.StokSisa,
-			validation.Min(0).Error("stok sisa tidak boleh negatif"),
-		),
-		validation.Field(&r.Status, // ← VALIDASI STATUS
-			validation.In("tersedia", "habis", "nonaktif").
-				Error("status harus: tersedia, habis, nonaktif"),
-		),
-		validation.Field(&r.TahunBeli,
-			validation.Min(0).Error("tahun beli tidak valid"),
-		),
-		validation.Field(&r.HargaBeli,
-			validation.Min(0.0).Error("harga beli tidak boleh negatif"),
-		),
+	
 	)
-}
-
-func (r *UpdateBarangRequest) HasUpdates() bool {
-	return r.Kode != nil || r.Nama != nil || r.Merk != nil ||
-		r.Deskripsi != nil || r.Kategori != nil ||
-		r.StokTotal != nil || r.StokSisa != nil ||
-		r.Status != nil || // ← TAMBAH INI
-		r.TahunBeli != nil || r.HargaBeli != nil
 }

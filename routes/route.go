@@ -50,7 +50,9 @@ func SetupRouter(
 
 	barangCrudHandler *BarangHandler.BarangHandler,
 	barangPhotoHandler *BarangHandler.BarangPhotoHandler,
-	barangCheckHandler * BarangHandler.BarangAvailabilityHandler,
+	barangCheckHandler *BarangHandler.BarangAvailabilityHandler,
+	barangUnitHandler *BarangHandler.BarangUnitHandler,
+	barangKomponenHandler *BarangHandler.BarangKomponenHandler,
 	
 	cartHandler *CartHandler.CartHandler,
 
@@ -64,6 +66,8 @@ func SetupRouter(
 	AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	AllowCredentials: false,
 }))
+
+	r.Static("/uploads", "./uploads")
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -93,8 +97,9 @@ func SetupRouter(
 
 	barangU := userRoute.Group("/barang")
 		barangU.GET("/", barangCrudHandler.GetAll)
-		barangU.GET("/:id", barangCrudHandler.GetByID)
-		barangU.GET("/availabilitycheck/:barang_id", barangCheckHandler.GetCalendar)
+		barangU.GET("/:kode", barangCrudHandler.GetByKode)
+		barangU.GET("/availabilitycheck/:kode", barangCheckHandler.GetCalendar)
+
 
 	cart := userRoute.Group("/cart")
 		cart.GET("", cartHandler.GetMyCart)              // Get my cart
@@ -155,14 +160,31 @@ func SetupRouter(
 			// CRUD Barang
 			barang.POST("", barangCrudHandler.Create)           // POST /admin/barang
 			barang.GET("", barangCrudHandler.GetAll)            // GET /admin/barang
-			barang.GET("/:id", barangCrudHandler.GetByID)       // GET /admin/barang/:id
-			barang.PUT("/:id", barangCrudHandler.Update)        // PUT /admin/barang/:id
-			barang.DELETE("/:id", barangCrudHandler.Delete)     // DELETE /admin/barang/:id
+			barang.GET("/:kode", barangCrudHandler.GetByKode)       // GET /admin/barang/:id
+			barang.PUT("/:kode", barangCrudHandler.Update)        // PUT /admin/barang/:id
+			barang.DELETE("/:kode", barangCrudHandler.Delete)
+			barang.GET("/:kode/unit", barangUnitHandler.GetByBarangKode)     // DELETE /admin/barang/:id
+			barang.POST("/:kode/nonaktif", barangCrudHandler.SetNonAktif)
+			barang.POST("/:kode/aktif", barangCrudHandler.SetAktif)
+			barang.GET("/:kode/status-check", barangCrudHandler.CheckStatus)
 			// Photo Management
-			barang.POST("/:id/photo", barangPhotoHandler.UpdatePhoto)     // POST /admin/barang/:id/photo
-			barang.DELETE("/:id/photo", barangPhotoHandler.DeletePhoto)   // DELETE /admin/barang/:id/photo
+			barang.POST("/:kode/photo", barangPhotoHandler.UpdatePhoto)     // POST /admin/barang/:id/photo
+			barang.DELETE("/kode/photo", barangPhotoHandler.DeletePhoto)   // DELETE /admin/barang/:id/photo
+		unit := adminRoute.Group("/barang/unit")
+			unit.POST("", barangUnitHandler.Create)
+			unit.GET("/:kode", barangUnitHandler.GetByKode)
+			unit.PUT("/:kode", barangUnitHandler.Update)
+			unit.POST("/:kode/maintain", barangUnitHandler.SetMaintenance)
+			unit.POST("/:kode/nonaktif", barangUnitHandler.SetNonAktif)
+			unit.POST("/:kode/aktif", barangUnitHandler.SetAktifKembali)
+			unit.DELETE("/:kode", barangUnitHandler.Delete)
+			unit.POST("/:kode/komponen", barangKomponenHandler.Add) 
+			unit.GET("/:kode/komponen", barangKomponenHandler.GetByUnit)
+		komponen := adminRoute.Group("/barang/komponen")
+			komponen.PUT("/:id", barangKomponenHandler.Update)
+			komponen.DELETE("/:id", barangKomponenHandler.Delete)
 
-		
+
 
 	superAdminRoute := mainRoute.Group("/super-admin")
 	superAdminRoute.Use(middleware.SuperAdminOnly())

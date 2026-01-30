@@ -1,55 +1,45 @@
 package handler
 
 import (
-	"strconv"
-
-	barang "backend/dto/request/barang"
-	usecase "backend/usecase/barang"
+	barangReq "backend/dto/request/barang"
+	barangUC "backend/usecase/barang"
 	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type BarangHandler struct {
-	barangUsecase usecase.BarangUseCase
+	uc barangUC.BarangUseCase
 }
 
-func NewBarangHandler(barangUC usecase.BarangUseCase) *BarangHandler {
-	return &BarangHandler{
-		barangUsecase: barangUC,
-	}
+func NewBarangHandler(uc barangUC.BarangUseCase) *BarangHandler {
+	return &BarangHandler{uc: uc}
 }
 
 //
 // ==========================
-// CREATE
+// CREATE BARANG (MASTER)
 // ==========================
+//
 
 // CreateBarang godoc
-// @Summary      Create new barang
-// @Description  Membuat barang baru (admin only)
+// @Summary      Create barang
+// @Description  Membuat barang master (admin)
 // @Tags         barang
 // @Accept       json
 // @Produce      json
-// @Param        request  body      barang.CreateBarangRequest  true  "Barang data"
-// @Success      201      {object}  map[string]interface{}
-// @Failure      400      {object}  map[string]interface{}
+// @Param        request body barangReq.CreateBarangRequest true "barang master"
+// @Success      201 {object} map[string]interface{}
 // @Router       /api/admin/barang [post]
 // @Security     ApiKeyAuth
 func (h *BarangHandler) Create(c *gin.Context) {
-	var body barang.CreateBarangRequest
-
+	var body barangReq.CreateBarangRequest
 	if err := body.BindAndValidate(c); err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	if err := body.CustomValidate(); err != nil {
-		utils.BadRequest(c, err.Error())
-		return
-	}
-
-	result, err := h.barangUsecase.Create(body)
+	result, err := h.uc.Create(body)
 	if err != nil {
 		utils.InternalError(c, err.Error())
 		return
@@ -62,23 +52,22 @@ func (h *BarangHandler) Create(c *gin.Context) {
 // ==========================
 // GET ALL
 // ==========================
+//
 
 // GetAllBarang godoc
-// @Summary      Get all barang
-// @Description  Mengambil semua data barang dengan filter dan pagination
+// @Summary      Get list barang
 // @Tags         barang
 // @Produce      json
-// @Param        status      query     string  false  "Filter status"
-// @Param        kategori    query     string  false  "Filter kategori"
-// @Param        search      query     string  false  "Search nama/kode"
-// @Param        page        query     int     false  "Page"
-// @Param        limit       query     int     false  "Limit"
-// @Router       /api/admin/barang [get]
-// @Security     ApiKeyAuth
+// @Param        keyword query string false "keyword"
+// @Param        kategori query string false "kategori"
+// @Param        status query string false "status"
+// @Param        page query int false "page"
+// @Param        limit query int false "limit"
+// @Router       /api/barang [get]
 func (h *BarangHandler) GetAll(c *gin.Context) {
 	role := c.GetString("role")
 
-	var filter barang.BarangFilter
+	var filter barangReq.BarangFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		utils.BadRequest(c, err.Error())
 		return
@@ -86,98 +75,73 @@ func (h *BarangHandler) GetAll(c *gin.Context) {
 
 	filter.Page, filter.Limit = utils.ValidatePagination(filter.Page, filter.Limit)
 
-	if filter.SortBy == "" {
-		filter.SortBy = "created_at"
-	}
-	if filter.SortOrder == "" {
-		filter.SortOrder = "desc"
-	}
-
-	data, pagination, err := h.barangUsecase.GetAll(filter, role)
+	data, pagination, err := h.uc.GetAll(filter, role)
 	if err != nil {
 		utils.InternalError(c, err.Error())
 		return
 	}
 
-	utils.PaginatedSuccess(c, data, pagination, "data barang berhasil diambil")
+	utils.PaginatedSuccess(c, data, pagination, "list barang")
 }
 
 //
 // ==========================
-// GET BY ID
+// GET BY KODE
 // ==========================
+//
 
-// GetBarangByID godoc
-// @Summary      Get barang by ID
-// @Description  Mengambil detail barang berdasarkan ID
+// GetBarangByKode godoc
+// @Summary      Get barang detail
 // @Tags         barang
 // @Produce      json
-// @Param        id   path  int  true  "Barang ID"
-// @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      401  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Router       /api/admin/barang/{id} [get]
-// @Security     ApiKeyAuth
-func (h *BarangHandler) GetByID(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.BadRequest(c, "ID barang tidak valid")
+// @Param        kode path string true "barang kode"
+// @Router       /api/barang/{kode} [get]
+func (h *BarangHandler) GetByKode(c *gin.Context) {
+	kode := c.Param("kode")
+	if kode == "" {
+		utils.BadRequest(c, "kode barang wajib diisi")
 		return
 	}
 
 	role := c.GetString("role")
-	if role == "" {
-		utils.Unauthorized(c, "unauthorized")
-		return
-	}
-
-	result, err := h.barangUsecase.GetByID(uint(id), role)
+	result, err := h.uc.GetByKode(kode, role)
 	if err != nil {
 		utils.NotFound(c, err.Error())
 		return
 	}
 
-	utils.Success(c, result, "data barang berhasil diambil")
+	utils.Success(c, result, "detail barang")
 }
 
 //
 // ==========================
-// UPDATE
+// UPDATE BY KODE
 // ==========================
+//
 
 // UpdateBarang godoc
 // @Summary      Update barang
-// @Description  Update data barang berdasarkan ID
 // @Tags         barang
 // @Accept       json
 // @Produce      json
-// @Param        id       path  int                         true  "Barang ID"
-// @Param        request  body  barang.UpdateBarangRequest  true  "Update data"
-// @Success      200      {object}  map[string]interface{}
-// @Failure      400      {object}  map[string]interface{}
-// @Failure      500      {object}  map[string]interface{}
-// @Router       /api/admin/barang/{id} [put]
+// @Param        kode path string true "barang kode"
+// @Param        request body barangReq.UpdateBarangRequest true "update barang"
+// @Router       /api/admin/barang/{kode} [put]
 // @Security     ApiKeyAuth
 func (h *BarangHandler) Update(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.BadRequest(c, "ID barang tidak valid")
+	kode := c.Param("kode")
+	if kode == "" {
+		utils.BadRequest(c, "kode barang wajib diisi")
 		return
 	}
 
-	var body barang.UpdateBarangRequest
+	var body barangReq.UpdateBarangRequest
 	if err := body.BindAndValidate(c); err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	if !body.HasUpdates() {
-		utils.BadRequest(c, "tidak ada data yang diupdate")
-		return
-	}
-
-	result, err := h.barangUsecase.Update(uint(id), body)
+	result, err := h.uc.UpdateByKode(kode, body)
 	if err != nil {
 		utils.InternalError(c, err.Error())
 		return
@@ -188,31 +152,68 @@ func (h *BarangHandler) Update(c *gin.Context) {
 
 //
 // ==========================
-// DELETE
+// DELETE BY KODE
 // ==========================
+//
 
 // DeleteBarang godoc
 // @Summary      Delete barang
-// @Description  Menghapus barang berdasarkan ID
 // @Tags         barang
 // @Produce      json
-// @Param        id   path  int  true  "Barang ID"
-// @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
-// @Router       /api/admin/barang/{id} [delete]
+// @Param        kode path string true "barang kode"
+// @Router       /api/admin/barang/{kode} [delete]
 // @Security     ApiKeyAuth
 func (h *BarangHandler) Delete(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.BadRequest(c, "ID barang tidak valid")
+	kode := c.Param("kode")
+	if kode == "" {
+		utils.BadRequest(c, "kode barang wajib diisi")
 		return
 	}
 
-	if err := h.barangUsecase.Delete(uint(id)); err != nil {
+	if err := h.uc.DeleteByKode(kode); err != nil {
 		utils.InternalError(c, err.Error())
 		return
 	}
 
 	utils.Success(c, nil, "barang berhasil dihapus")
+}
+
+
+func (h *BarangHandler) SetNonAktif(c *gin.Context) {
+	kode := c.Param("kode")
+
+	if err := h.uc.SetNonAktif(kode); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Barang dan semua unitnya berhasil dinonaktifkan",
+	})
+}
+
+func (h *BarangHandler) SetAktif(c *gin.Context) {
+	kode := c.Param("kode")
+
+	if err := h.uc.SetAktif(kode); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Barang dan semua unitnya berhasil diaktifkan kembali",
+	})
+}
+
+
+func (h *BarangHandler) CheckStatus(c *gin.Context) {
+	kode := c.Param("kode")
+	
+	result, err := h.uc.CheckAndSuggestBarangStatus(kode)
+	if err != nil {
+		utils.NotFound(c, err.Error())
+		return
+	}
+
+	utils.Success(c, result, "status check")
 }

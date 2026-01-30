@@ -2,7 +2,7 @@
 package repo
 
 import (
-	"backend/model" // sesuaikan dengan path project lu
+	"backend/model"
 	"errors"
 
 	"gorm.io/gorm"
@@ -63,6 +63,9 @@ func (r *cartRepository) GetCartByUserID(userID uint) (*model.Cart, error) {
 	
 	err := r.db.Where("user_id = ?", userID).First(&cart).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("cart tidak ditemukan")
+		}
 		return nil, err
 	}
 	
@@ -74,11 +77,14 @@ func (r *cartRepository) GetCartWithItems(userID uint) (*model.Cart, error) {
 	var cart model.Cart
 	
 	err := r.db.
-		Preload("CartItems.Barang").
+		Preload("CartItems.Barang"). // Preload barang master (Kode, Nama, dll)
 		Where("user_id = ?", userID).
 		First(&cart).Error
 	
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("cart tidak ditemukan")
+		}
 		return nil, err
 	}
 	
@@ -87,7 +93,14 @@ func (r *cartRepository) GetCartWithItems(userID uint) (*model.Cart, error) {
 
 // DeleteCart - Hapus cart (cart items juga ke-delete karena CASCADE)
 func (r *cartRepository) DeleteCart(cartID uint) error {
-	return r.db.Delete(&model.Cart{}, cartID).Error
+	result := r.db.Delete(&model.Cart{}, cartID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("cart tidak ditemukan")
+	}
+	return nil
 }
 
 // ========== CART ITEM METHODS ==========
@@ -97,7 +110,7 @@ func (r *cartRepository) AddItemToCart(cartItem *model.CartItem) error {
 	return r.db.Create(cartItem).Error
 }
 
-// GetCartItem - Get specific cart item
+// GetCartItem - Get cart item by cart ID dan barang ID
 func (r *cartRepository) GetCartItem(cartID, barangID uint) (*model.CartItem, error) {
 	var cartItem model.CartItem
 	
@@ -106,39 +119,13 @@ func (r *cartRepository) GetCartItem(cartID, barangID uint) (*model.CartItem, er
 		First(&cartItem).Error
 	
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // Return nil kalau gak ada (bukan error)
+		}
 		return nil, err
 	}
 	
 	return &cartItem, nil
-}
-
-// UpdateCartItem - Update cart item (quantity, tanggal, dll)
-func (r *cartRepository) UpdateCartItem(cartItem *model.CartItem) error {
-	return r.db.Save(cartItem).Error
-}
-
-// DeleteCartItem - Hapus cart item by ID
-func (r *cartRepository) DeleteCartItem(cartItemID uint) error {
-	return r.db.Delete(&model.CartItem{}, cartItemID).Error
-}
-
-// DeleteCartItemByBarangID - Hapus cart item by barang ID
-func (r *cartRepository) DeleteCartItemByBarangID(cartID, barangID uint) error {
-	return r.db.
-		Where("cart_id = ? AND barang_id = ?", cartID, barangID).
-		Delete(&model.CartItem{}).Error
-}
-
-// ClearCart - Hapus semua items di cart
-func (r *cartRepository) ClearCart(cartID uint) error {
-	return r.db.Where("cart_id = ?", cartID).Delete(&model.CartItem{}).Error
-}
-
-// GetCartItemCount - Hitung jumlah item di cart
-func (r *cartRepository) GetCartItemCount(cartID uint) (int64, error) {
-	var count int64
-	err := r.db.Model(&model.CartItem{}).Where("cart_id = ?", cartID).Count(&count).Error
-	return count, err
 }
 
 // GetCartItemByID - Get cart item by ID dengan validasi cart ownership
@@ -150,6 +137,9 @@ func (r *cartRepository) GetCartItemByID(cartItemID, cartID uint) (*model.CartIt
 		First(&cartItem).Error
 	
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("cart item tidak ditemukan")
+		}
 		return nil, err
 	}
 	
@@ -166,8 +156,64 @@ func (r *cartRepository) GetCartItemByIDWithBarang(cartItemID, cartID uint) (*mo
 		First(&cartItem).Error
 	
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("cart item tidak ditemukan")
+		}
 		return nil, err
 	}
 	
 	return &cartItem, nil
+}
+
+// UpdateCartItem - Update cart item (biasanya quantity)
+func (r *cartRepository) UpdateCartItem(cartItem *model.CartItem) error {
+	result := r.db.Save(cartItem)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("cart item tidak ditemukan")
+	}
+	return nil
+}
+
+// DeleteCartItem - Hapus cart item by ID
+func (r *cartRepository) DeleteCartItem(cartItemID uint) error {
+	result := r.db.Delete(&model.CartItem{}, cartItemID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("cart item tidak ditemukan")
+	}
+	return nil
+}
+
+// DeleteCartItemByBarangID - Hapus cart item by barang ID
+func (r *cartRepository) DeleteCartItemByBarangID(cartID, barangID uint) error {
+	result := r.db.
+		Where("cart_id = ? AND barang_id = ?", cartID, barangID).
+		Delete(&model.CartItem{})
+	
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("cart item tidak ditemukan")
+	}
+	return nil
+}
+
+// ClearCart - Hapus semua items di cart
+func (r *cartRepository) ClearCart(cartID uint) error {
+	return r.db.Where("cart_id = ?", cartID).Delete(&model.CartItem{}).Error
+}
+
+// GetCartItemCount - Hitung jumlah item di cart
+func (r *cartRepository) GetCartItemCount(cartID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.CartItem{}).
+		Where("cart_id = ?", cartID).
+		Count(&count).Error
+	return count, err
 }
