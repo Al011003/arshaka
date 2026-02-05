@@ -108,6 +108,7 @@ func SetupRouter(
 		cart.PUT("/:id", cartHandler.UpdateCartItem)     // Update cart item
 		cart.DELETE("/:id", cartHandler.RemoveFromCart)  // Remove from cart
 		cart.DELETE("", cartHandler.ClearCart)
+		cart.POST("/acc", cartHandler.AcceptSuggestion)
 
 	userLoan := userRoute.Group("/loan")
 		userLoan.POST("", loanUserHandler.Create)

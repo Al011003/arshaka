@@ -80,7 +80,7 @@ definitions:
     properties:
       deskripsi:
         type: string
-      harga_beli:
+      harga:
         type: number
       kategori:
         type: string
@@ -90,18 +90,49 @@ definitions:
         type: string
       nama:
         type: string
-      stok_sisa:
+    type: object
+  barang.CreateKomponenRequest:
+    properties:
+      harga_satuan:
         type: integer
-      stok_total:
+      jumlah_aktual:
         type: integer
-      tahun_beli:
+      jumlah_wajib:
         type: integer
+      nama:
+        type: string
+    type: object
+  barang.CreateUnitRequest:
+    properties:
+      catatan:
+        type: string
+      jumlah:
+        type: integer
+      kode_barang:
+        type: string
+      lokasi_penyimpan:
+        type: string
+      tahun_perolehan:
+        type: integer
+    type: object
+  barang.SetMaintenanceRequest:
+    properties:
+      alasan:
+        description: ← ganti dari Catatan jadi Alasan biar konsisten
+        type: string
+      priority:
+        type: integer
+    type: object
+  barang.SetNonAktifRequest:
+    properties:
+      alasan:
+        type: string
     type: object
   barang.UpdateBarangRequest:
     properties:
       deskripsi:
         type: string
-      harga_beli:
+      harga:
         type: number
       kategori:
         type: string
@@ -112,20 +143,50 @@ definitions:
       nama:
         type: string
       status:
-        description: ← TAMBAH INI
         type: string
-      stok_sisa:
+    type: object
+  barang.UpdateKomponenRequest:
+    properties:
+      harga_satuan:
         type: integer
-      stok_total:
+      jumlah_aktual:
         type: integer
-      tahun_beli:
+      jumlah_wajib:
         type: integer
+      nama:
+        type: string
+    type: object
+  barang.UpdateUnitRequest:
+    properties:
+      catatan:
+        type: string
+      kondisi:
+        type: string
+      lokasi_penyimpan:
+        type: string
+      tahun_perolehan:
+        type: integer
+    type: object
+  cart.AcceptSuggestionRequest:
+    properties:
+      adjustments:
+        items:
+          $ref: '#/definitions/cart.AdjustmentItem'
+        type: array
     type: object
   cart.AddToCartRequest:
     properties:
-      barang_id:
-        type: integer
+      kode_barang:
+        description: ✅ Ganti dari BarangID
+        type: string
       quantity:
+        type: integer
+    type: object
+  cart.AdjustmentItem:
+    properties:
+      accepted_qty:
+        type: integer
+      cart_item_id:
         type: integer
     type: object
   cart.UpdateCartItemRequest:
@@ -398,25 +459,24 @@ paths:
       - angkatan-mapala
   /api/admin/barang:
     get:
-      description: Mengambil semua data barang dengan filter dan pagination
       parameters:
-      - description: Filter status
+      - description: keyword
         in: query
-        name: status
+        name: keyword
         type: string
-      - description: Filter kategori
+      - description: kategori
         in: query
         name: kategori
         type: string
-      - description: Search nama/kode
+      - description: status
         in: query
-        name: search
+        name: status
         type: string
-      - description: Page
+      - description: page
         in: query
         name: page
         type: integer
-      - description: Limit
+      - description: limit
         in: query
         name: limit
         type: integer
@@ -425,15 +485,15 @@ paths:
       responses: {}
       security:
       - ApiKeyAuth: []
-      summary: Get all barang
+      summary: Get list barang
       tags:
       - barang
     post:
       consumes:
       - application/json
-      description: Membuat barang baru (admin only)
+      description: Membuat barang master (admin)
       parameters:
-      - description: Barang data
+      - description: barang master
         in: body
         name: request
         required: true
@@ -447,56 +507,74 @@ paths:
           schema:
             additionalProperties: true
             type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
       security:
       - ApiKeyAuth: []
-      summary: Create new barang
+      summary: Create barang
       tags:
       - barang
-  /api/admin/barang/{id}:
+  /api/admin/barang/{kode}:
     delete:
-      description: Menghapus barang berdasarkan ID
       parameters:
-      - description: Barang ID
+      - description: barang kode
         in: path
-        name: id
+        name: kode
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties: true
-            type: object
+      responses: {}
       security:
       - ApiKeyAuth: []
       summary: Delete barang
       tags:
       - barang
     get:
-      description: Mengambil detail barang berdasarkan ID
       parameters:
-      - description: Barang ID
+      - description: barang kode
         in: path
-        name: id
+        name: kode
         required: true
-        type: integer
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get barang detail
+      tags:
+      - barang
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: barang kode
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: update barang
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.UpdateBarangRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Update barang
+      tags:
+      - barang
+  /api/admin/barang/{kode}/photo:
+    delete:
+      description: Menghapus foto utama barang (admin only)
+      parameters:
+      - description: Kode Barang
+        in: path
+        name: kode
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -520,86 +598,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Get barang by ID
-      tags:
-      - barang
-    put:
-      consumes:
-      - application/json
-      description: Update data barang berdasarkan ID
-      parameters:
-      - description: Barang ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Update data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/barang.UpdateBarangRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
         "500":
           description: Internal Server Error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Update barang
-      tags:
-      - barang
-  /api/admin/barang/{id}/photo:
-    delete:
-      consumes:
-      - application/json
-      description: Menghapus foto utama barang (admin only)
-      parameters:
-      - description: ID Barang
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Foto barang berhasil dihapus
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request - ID tidak valid
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Barang tidak ditemukan
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
           schema:
             additionalProperties: true
             type: object
@@ -613,9 +613,9 @@ paths:
       - multipart/form-data
       description: Upload atau mengganti foto utama barang (admin only)
       parameters:
-      - description: ID Barang
+      - description: Kode Barang
         in: path
-        name: id
+        name: kode
         required: true
         type: string
       - description: Foto barang
@@ -627,12 +627,12 @@ paths:
       - application/json
       responses:
         "200":
-          description: Foto barang berhasil diupload
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad request - ID tidak valid / file tidak valid
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
@@ -642,12 +642,12 @@ paths:
             additionalProperties: true
             type: object
         "404":
-          description: Barang tidak ditemukan
+          description: Not Found
           schema:
             additionalProperties: true
             type: object
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             additionalProperties: true
             type: object
@@ -656,6 +656,374 @@ paths:
       summary: Upload / Update foto barang
       tags:
       - barang-photo
+  /api/admin/barang/{kode}/units:
+    get:
+      description: Mendapatkan semua unit dari barang tertentu
+      parameters:
+      - description: kode barang
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get units by barang kode
+      tags:
+      - barang-unit
+  /api/admin/barang/komponen/{id}:
+    delete:
+      description: Hapus komponen
+      parameters:
+      - description: komponen id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete komponen
+      tags:
+      - barang-komponen
+    put:
+      consumes:
+      - application/json
+      description: Update data komponen
+      parameters:
+      - description: komponen id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: update komponen
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.UpdateKomponenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update komponen
+      tags:
+      - barang-komponen
+  /api/admin/barang/unit:
+    post:
+      consumes:
+      - application/json
+      description: Menambahkan unit ke barang secara bulk
+      parameters:
+      - description: create unit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.CreateUnitRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create barang unit (bulk)
+      tags:
+      - barang-unit
+  /api/admin/barang/unit/{kode}:
+    delete:
+      description: Hapus unit (soft delete)
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete unit
+      tags:
+      - barang-unit
+    get:
+      description: Mendapatkan detail unit berdasarkan kode
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get unit detail
+      tags:
+      - barang-unit
+    put:
+      consumes:
+      - application/json
+      description: Update kondisi, tahun perolehan, lokasi, dan catatan unit
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: update unit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.UpdateUnitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update unit metadata
+      tags:
+      - barang-unit
+  /api/admin/barang/unit/{kode}/aktifkan:
+    post:
+      description: Aktifkan kembali unit yang nonaktif atau maintenance
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Reactivate unit
+      tags:
+      - barang-unit
+  /api/admin/barang/unit/{kode}/komponen:
+    get:
+      description: Mendapatkan semua komponen dari unit tertentu
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode_unit
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get komponen by unit
+      tags:
+      - barang-komponen
+    post:
+      consumes:
+      - application/json
+      description: Menambahkan komponen ke unit barang
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode_unit
+        required: true
+        type: string
+      - description: create komponen
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.CreateKomponenRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Add komponen to unit
+      tags:
+      - barang-komponen
+  /api/admin/barang/unit/{kode}/maintenance:
+    post:
+      consumes:
+      - application/json
+      description: Set unit ke status maintenance dengan priority tertentu
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: set maintenance
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.SetMaintenanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Set unit to maintenance
+      tags:
+      - barang-unit
+  /api/admin/barang/unit/{kode}/nonaktif:
+    post:
+      consumes:
+      - application/json
+      description: Nonaktifkan unit dengan alasan tertentu
+      parameters:
+      - description: kode unit
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: set non-aktif
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/barang.SetNonAktifRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Set unit to non-aktif
+      tags:
+      - barang-unit
   /api/admin/fakultas:
     get:
       description: Mengambil seluruh data fakultas
@@ -1102,6 +1470,56 @@ paths:
       summary: Update user by admin
       tags:
       - admin-user
+  /api/availability/{kode}/calendar:
+    get:
+      description: Mendapatkan kalender ketersediaan barang untuk bulan tertentu
+      parameters:
+      - description: kode barang
+        in: path
+        name: kode
+        required: true
+        type: string
+      - default: current month
+        description: month (YYYY-MM)
+        in: query
+        name: month
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get availability calendar
+      tags:
+      - availability
+  /api/availability/{kode}/date:
+    get:
+      description: Mendapatkan detail ketersediaan barang pada tanggal tertentu
+      parameters:
+      - description: kode barang
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get date detail
+      tags:
+      - availability
   /api/cart:
     delete:
       consumes:
@@ -1133,7 +1551,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Mengambil semua item cart milik user yang sedang login
+      description: Mengambil semua item cart milik user yang sedang login (dengan
+        auto-adjust dan suggestions)
       produces:
       - application/json
       responses:
@@ -1160,9 +1579,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Menambahkan barang ke dalam cart user
+      description: Menambahkan barang ke dalam cart user (menggunakan kode barang)
       parameters:
-      - description: Data cart
+      - description: Data cart (kode_barang & quantity)
         in: body
         name: request
         required: true
@@ -1238,14 +1657,14 @@ paths:
     put:
       consumes:
       - application/json
-      description: Mengupdate quantity atau data item di cart
+      description: Mengupdate quantity item di cart
       parameters:
       - description: Cart Item ID
         in: path
         name: id
         required: true
         type: string
-      - description: Update cart item
+      - description: Update cart item quantity
         in: body
         name: request
         required: true
@@ -1277,6 +1696,47 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Update cart item
+      tags:
+      - cart
+  /api/cart/accept-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: Menerima saran perubahan quantity dari sistem (misalnya karena
+        unit maintenance/dipinjam)
+      parameters:
+      - description: List adjustments yang akan diterima
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cart.AcceptSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil menerima saran
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Accept cart suggestions
       tags:
       - cart
   /api/cart/count:

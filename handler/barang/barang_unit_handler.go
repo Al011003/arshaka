@@ -27,7 +27,7 @@ func NewBarangUnitHandler(uc usecase.BarangUnitUseCase) *BarangUnitHandler {
 // @Tags         barang-unit
 // @Accept       json
 // @Produce      json
-// @Param        request body request.CreateUnitRequest true "create unit"
+// @Param        request body barang.CreateUnitRequest true "create unit"
 // @Success      201 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
 // @Router       /api/admin/barang/unit [post]
@@ -122,7 +122,7 @@ func (h *BarangUnitHandler) GetByBarangKode(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        kode path string true "kode unit"
-// @Param        request body request.UpdateUnitRequest true "update unit"
+// @Param        request body barang.UpdateUnitRequest true "update unit"
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
 // @Failure      404 {object} map[string]interface{}
@@ -162,7 +162,7 @@ func (h *BarangUnitHandler) Update(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        kode path string true "kode unit"
-// @Param        request body request.SetMaintenanceRequest true "set maintenance"
+// @Param        request body barang.SetMaintenanceRequest true "set maintenance"
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
 // @Router       /api/admin/barang/unit/{kode}/maintenance [post]
@@ -200,7 +200,7 @@ func (h *BarangUnitHandler) SetMaintenance(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        kode path string true "kode unit"
-// @Param        request body request.SetNonAktifRequest true "set non-aktif"
+// @Param        request body barang.SetNonAktifRequest true "set non-aktif"
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
 // @Router       /api/admin/barang/unit/{kode}/nonaktif [post]

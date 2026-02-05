@@ -61,6 +61,7 @@ type BarangUnitRepository interface {
 	ReactivateAllByBarangID(barangID uint) error
 
 	FindByIDWithComponents(id uint) (*model.BarangUnit, error)
+	FindByBarangID(barangID uint) ([]model.BarangUnit, error)
 }
 
 type barangUnitRepository struct {
@@ -360,4 +361,10 @@ func (r *barangUnitRepository) FindByIDWithComponents(id uint) (*model.BarangUni
 	var unit model.BarangUnit
 	err := r.db.Preload("Komponen").First(&unit, id).Error
 	return &unit, err
+}
+
+func (r *barangUnitRepository) FindByBarangID(barangID uint) ([]model.BarangUnit, error) {
+	var units []model.BarangUnit
+	err := r.db.Where("barang_id = ?", barangID).Find(&units).Error
+	return units, err
 }

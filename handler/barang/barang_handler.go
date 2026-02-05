@@ -28,7 +28,7 @@ func NewBarangHandler(uc barangUC.BarangUseCase) *BarangHandler {
 // @Tags         barang
 // @Accept       json
 // @Produce      json
-// @Param        request body barangReq.CreateBarangRequest true "barang master"
+// @Param        request body barang.CreateBarangRequest true "barang master"
 // @Success      201 {object} map[string]interface{}
 // @Router       /api/admin/barang [post]
 // @Security     ApiKeyAuth
@@ -63,7 +63,8 @@ func (h *BarangHandler) Create(c *gin.Context) {
 // @Param        status query string false "status"
 // @Param        page query int false "page"
 // @Param        limit query int false "limit"
-// @Router       /api/barang [get]
+// @Router       /api/admin/barang [get]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) GetAll(c *gin.Context) {
 	role := c.GetString("role")
 
@@ -95,7 +96,8 @@ func (h *BarangHandler) GetAll(c *gin.Context) {
 // @Tags         barang
 // @Produce      json
 // @Param        kode path string true "barang kode"
-// @Router       /api/barang/{kode} [get]
+// @Router       /api/admin/barang/{kode} [get]
+// @Security     ApiKeyAuth
 func (h *BarangHandler) GetByKode(c *gin.Context) {
 	kode := c.Param("kode")
 	if kode == "" {
@@ -125,7 +127,7 @@ func (h *BarangHandler) GetByKode(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        kode path string true "barang kode"
-// @Param        request body barangReq.UpdateBarangRequest true "update barang"
+// @Param        request body barang.UpdateBarangRequest true "update barang"
 // @Router       /api/admin/barang/{kode} [put]
 // @Security     ApiKeyAuth
 func (h *BarangHandler) Update(c *gin.Context) {

@@ -25,10 +25,10 @@ func NewBarangKomponenHandler(uc usecase.BarangKomponenUseCase) *BarangKomponenH
 // @Accept       json
 // @Produce      json
 // @Param        kode_unit path string true "kode unit"
-// @Param        request body request.CreateKomponenRequest true "create komponen"
+// @Param        request body barang.CreateKomponenRequest true "create komponen"
 // @Success      201 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
-// @Router       /api/admin/barang/unit/{kode_unit}/komponen [post]
+// @Router       /api/admin/barang/unit/{kode}/komponen [post]
 // @Security     ApiKeyAuth
 func (h *BarangKomponenHandler) Add(c *gin.Context) {
 	kodeUnit := c.Param("kode")
@@ -58,7 +58,7 @@ func (h *BarangKomponenHandler) Add(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        id path int true "komponen id"
-// @Param        request body request.UpdateKomponenRequest true "update komponen"
+// @Param        request body barang.UpdateKomponenRequest true "update komponen"
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]interface{}
 // @Router       /api/admin/barang/komponen/{id} [put]
@@ -119,7 +119,7 @@ func (h *BarangKomponenHandler) Delete(c *gin.Context) {
 // @Param        kode_unit path string true "kode unit"
 // @Success      200 {object} map[string]interface{}
 // @Failure      404 {object} map[string]interface{}
-// @Router       /api/admin/barang/unit/{kode_unit}/komponen [get]
+// @Router       /api/admin/barang/unit/{kode}/komponen [get]
 // @Security     ApiKeyAuth
 func (h *BarangKomponenHandler) GetByUnit(c *gin.Context) {
 	kodeUnit := c.Param("kode")

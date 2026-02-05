@@ -23,7 +23,7 @@ func NewCartHandler(cartUC usecase.CartUsecase) *CartHandler {
 
 // GetMyCart godoc
 // @Summary      Get my cart
-// @Description  Mengambil semua item cart milik user yang sedang login
+// @Description  Mengambil semua item cart milik user yang sedang login (dengan auto-adjust dan suggestions)
 // @Tags         cart
 // @Accept       json
 // @Produce      json
@@ -52,11 +52,11 @@ func (h *CartHandler) GetMyCart(c *gin.Context) {
 
 // AddToCart godoc
 // @Summary      Add item to cart
-// @Description  Menambahkan barang ke dalam cart user
+// @Description  Menambahkan barang ke dalam cart user (menggunakan kode barang)
 // @Tags         cart
 // @Accept       json
 // @Produce      json
-// @Param        request  body      cart.AddToCartRequest  true  "Data cart"
+// @Param        request  body      cart.AddToCartRequest  true  "Data cart (kode_barang & quantity)"
 // @Success      201      {object}  map[string]interface{}  "Berhasil menambahkan ke cart"
 // @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
 // @Failure      401      {object}  map[string]interface{}  "Unauthorized"
@@ -90,12 +90,12 @@ func (h *CartHandler) AddToCart(c *gin.Context) {
 
 // UpdateCartItem godoc
 // @Summary      Update cart item
-// @Description  Mengupdate quantity atau data item di cart
+// @Description  Mengupdate quantity item di cart
 // @Tags         cart
 // @Accept       json
 // @Produce      json
 // @Param        id       path      string                     true  "Cart Item ID"
-// @Param        request  body      cart.UpdateCartItemRequest true  "Update cart item"
+// @Param        request  body      cart.UpdateCartItemRequest true  "Update cart item quantity"
 // @Success      200      {object}  map[string]interface{}  "Berhasil update cart item"
 // @Failure      400      {object}  map[string]interface{}  "Bad request"
 // @Failure      401      {object}  map[string]interface{}  "Unauthorized"
@@ -230,4 +230,42 @@ func (h *CartHandler) GetCartItemCount(c *gin.Context) {
 	}
 
 	utils.Success(c, result, "berhasil mengambil jumlah item")
+}
+
+// ✅ AcceptSuggestion godoc
+// @Summary      Accept cart suggestions
+// @Description  Menerima saran perubahan quantity dari sistem (misalnya karena unit maintenance/dipinjam)
+// @Tags         cart
+// @Accept       json
+// @Produce      json
+// @Param        request  body      cart.AcceptSuggestionRequest  true  "List adjustments yang akan diterima"
+// @Success      200      {object}  map[string]interface{}  "Berhasil menerima saran"
+// @Failure      400      {object}  map[string]interface{}  "Bad request - validation error"
+// @Failure      401      {object}  map[string]interface{}  "Unauthorized"
+// @Failure      500      {object}  map[string]interface{}  "Internal server error"
+// @Router       /api/cart/accept-suggestion [post]
+// @Security     ApiKeyAuth
+func (h *CartHandler) AcceptSuggestion(c *gin.Context) {
+	// Get user ID from JWT middleware context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		utils.Unauthorized(c, "user tidak terautentikasi")
+		return
+	}
+
+	// Validate request
+	var req cart.AcceptSuggestionRequest
+	if err := req.BindAndValidate(c); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+
+	// Accept suggestions
+	result, err := h.cartUsecase.AcceptSuggestion(userID.(uint), req)
+	if err != nil {
+		utils.InternalError(c, err.Error())
+		return
+	}
+
+	utils.Success(c, result, "berhasil menerima saran perubahan")
 }

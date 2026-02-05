@@ -191,42 +191,41 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Mengambil semua data barang dengan filter dan pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "barang"
                 ],
-                "summary": "Get all barang",
+                "summary": "Get list barang",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter status",
-                        "name": "status",
+                        "description": "keyword",
+                        "name": "keyword",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter kategori",
+                        "description": "kategori",
                         "name": "kategori",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Search nama/kode",
-                        "name": "search",
+                        "description": "status",
+                        "name": "status",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Page",
+                        "description": "page",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Limit",
+                        "description": "limit",
                         "name": "limit",
                         "in": "query"
                     }
@@ -239,7 +238,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Membuat barang baru (admin only)",
+                "description": "Membuat barang master (admin)",
                 "consumes": [
                     "application/json"
                 ],
@@ -249,15 +248,149 @@ const docTemplate = `{
                 "tags": [
                     "barang"
                 ],
-                "summary": "Create new barang",
+                "summary": "Create barang",
                 "parameters": [
                     {
-                        "description": "Barang data",
+                        "description": "barang master",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/barang.CreateBarangRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/komponen/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update data komponen",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-komponen"
+                ],
+                "summary": "Update komponen",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "komponen id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update komponen",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.UpdateKomponenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus komponen",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-komponen"
+                ],
+                "summary": "Delete komponen",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "komponen id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/unit": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Menambahkan unit ke barang secara bulk",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Create barang unit (bulk)",
+                "parameters": [
+                    {
+                        "description": "create unit",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.CreateUnitRequest"
                         }
                     }
                 ],
@@ -279,26 +412,568 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/admin/barang/{id}": {
+        "/api/admin/barang/unit/{kode}": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Mengambil detail barang berdasarkan ID",
+                "description": "Mendapatkan detail unit berdasarkan kode",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Get unit detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update kondisi, tahun perolehan, lokasi, dan catatan unit",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Update unit metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update unit",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.UpdateUnitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus unit (soft delete)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Delete unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/unit/{kode}/aktifkan": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Aktifkan kembali unit yang nonaktif atau maintenance",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Reactivate unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/unit/{kode}/komponen": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Mendapatkan semua komponen dari unit tertentu",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-komponen"
+                ],
+                "summary": "Get komponen by unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode_unit",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Menambahkan komponen ke unit barang",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-komponen"
+                ],
+                "summary": "Add komponen to unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode_unit",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "create komponen",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.CreateKomponenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/unit/{kode}/maintenance": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Set unit ke status maintenance dengan priority tertentu",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Set unit to maintenance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "set maintenance",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.SetMaintenanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/unit/{kode}/nonaktif": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Nonaktifkan unit dengan alasan tertentu",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-unit"
+                ],
+                "summary": "Set unit to non-aktif",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode unit",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "set non-aktif",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.SetNonAktifRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/{kode}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "barang"
                 ],
-                "summary": "Get barang by ID",
+                "summary": "Get barang detail",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Barang ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "barang kode",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang"
+                ],
+                "summary": "Update barang",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "barang kode",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update barang",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/barang.UpdateBarangRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang"
+                ],
+                "summary": "Delete barang",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "barang kode",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/admin/barang/{kode}/photo": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Upload atau mengganti foto utama barang (admin only)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-photo"
+                ],
+                "summary": "Upload / Update foto barang",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Kode Barang",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Foto barang",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Menghapus foto utama barang (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "barang-photo"
+                ],
+                "summary": "Hapus foto barang",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Kode Barang",
+                        "name": "kode",
                         "in": "path",
                         "required": true
                     }
@@ -331,105 +1006,6 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Update data barang berdasarkan ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "barang"
-                ],
-                "summary": "Update barang",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Barang ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Update data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/barang.UpdateBarangRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Menghapus barang berdasarkan ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "barang"
-                ],
-                "summary": "Delete barang",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Barang ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
                     },
                     "500": {
                         "description": "Internal Server Error",
@@ -441,135 +1017,40 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/admin/barang/{id}/photo": {
-            "post": {
+        "/api/admin/barang/{kode}/units": {
+            "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Upload atau mengganti foto utama barang (admin only)",
-                "consumes": [
-                    "multipart/form-data"
-                ],
+                "description": "Mendapatkan semua unit dari barang tertentu",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "barang-photo"
+                    "barang-unit"
                 ],
-                "summary": "Upload / Update foto barang",
+                "summary": "Get units by barang kode",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Barang",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Foto barang",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Foto barang berhasil diupload",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - ID tidak valid / file tidak valid",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Barang tidak ditemukan",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Menghapus foto utama barang (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "barang-photo"
-                ],
-                "summary": "Hapus foto barang",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID Barang",
-                        "name": "id",
+                        "description": "kode barang",
+                        "name": "kode",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Foto barang berhasil dihapus",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - ID tidak valid",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Barang tidak ditemukan",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -1268,6 +1749,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/availability/{kode}/calendar": {
+            "get": {
+                "description": "Mendapatkan kalender ketersediaan barang untuk bulan tertentu",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "availability"
+                ],
+                "summary": "Get availability calendar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode barang",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "current month",
+                        "description": "month (YYYY-MM)",
+                        "name": "month",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/availability/{kode}/date": {
+            "get": {
+                "description": "Mendapatkan detail ketersediaan barang pada tanggal tertentu",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "availability"
+                ],
+                "summary": "Get date detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "kode barang",
+                        "name": "kode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "date (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/cart": {
             "get": {
                 "security": [
@@ -1275,7 +1830,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Mengambil semua item cart milik user yang sedang login",
+                "description": "Mengambil semua item cart milik user yang sedang login (dengan auto-adjust dan suggestions)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1316,7 +1871,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Menambahkan barang ke dalam cart user",
+                "description": "Menambahkan barang ke dalam cart user (menggunakan kode barang)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1329,7 +1884,7 @@ const docTemplate = `{
                 "summary": "Add item to cart",
                 "parameters": [
                     {
-                        "description": "Data cart",
+                        "description": "Data cart (kode_barang \u0026 quantity)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1411,6 +1966,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/cart/accept-suggestion": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Menerima saran perubahan quantity dari sistem (misalnya karena unit maintenance/dipinjam)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Accept cart suggestions",
+                "parameters": [
+                    {
+                        "description": "List adjustments yang akan diterima",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cart.AcceptSuggestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil menerima saran",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/cart/count": {
             "get": {
                 "security": [
@@ -1461,7 +2077,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Mengupdate quantity atau data item di cart",
+                "description": "Mengupdate quantity item di cart",
                 "consumes": [
                     "application/json"
                 ],
@@ -1481,7 +2097,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Update cart item",
+                        "description": "Update cart item quantity",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -3078,7 +3694,7 @@ const docTemplate = `{
                 "deskripsi": {
                     "type": "string"
                 },
-                "harga_beli": {
+                "harga": {
                     "type": "number"
                 },
                 "kategori": {
@@ -3092,15 +3708,63 @@ const docTemplate = `{
                 },
                 "nama": {
                     "type": "string"
-                },
-                "stok_sisa": {
+                }
+            }
+        },
+        "barang.CreateKomponenRequest": {
+            "type": "object",
+            "properties": {
+                "harga_satuan": {
                     "type": "integer"
                 },
-                "stok_total": {
+                "jumlah_aktual": {
                     "type": "integer"
                 },
-                "tahun_beli": {
+                "jumlah_wajib": {
                     "type": "integer"
+                },
+                "nama": {
+                    "type": "string"
+                }
+            }
+        },
+        "barang.CreateUnitRequest": {
+            "type": "object",
+            "properties": {
+                "catatan": {
+                    "type": "string"
+                },
+                "jumlah": {
+                    "type": "integer"
+                },
+                "kode_barang": {
+                    "type": "string"
+                },
+                "lokasi_penyimpan": {
+                    "type": "string"
+                },
+                "tahun_perolehan": {
+                    "type": "integer"
+                }
+            }
+        },
+        "barang.SetMaintenanceRequest": {
+            "type": "object",
+            "properties": {
+                "alasan": {
+                    "description": "← ganti dari Catatan jadi Alasan biar konsisten",
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                }
+            }
+        },
+        "barang.SetNonAktifRequest": {
+            "type": "object",
+            "properties": {
+                "alasan": {
+                    "type": "string"
                 }
             }
         },
@@ -3110,7 +3774,7 @@ const docTemplate = `{
                 "deskripsi": {
                     "type": "string"
                 },
-                "harga_beli": {
+                "harga": {
                     "type": "number"
                 },
                 "kategori": {
@@ -3126,27 +3790,74 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "← TAMBAH INI",
+                    "type": "string"
+                }
+            }
+        },
+        "barang.UpdateKomponenRequest": {
+            "type": "object",
+            "properties": {
+                "harga_satuan": {
+                    "type": "integer"
+                },
+                "jumlah_aktual": {
+                    "type": "integer"
+                },
+                "jumlah_wajib": {
+                    "type": "integer"
+                },
+                "nama": {
+                    "type": "string"
+                }
+            }
+        },
+        "barang.UpdateUnitRequest": {
+            "type": "object",
+            "properties": {
+                "catatan": {
                     "type": "string"
                 },
-                "stok_sisa": {
-                    "type": "integer"
+                "kondisi": {
+                    "type": "string"
                 },
-                "stok_total": {
-                    "type": "integer"
+                "lokasi_penyimpan": {
+                    "type": "string"
                 },
-                "tahun_beli": {
+                "tahun_perolehan": {
                     "type": "integer"
+                }
+            }
+        },
+        "cart.AcceptSuggestionRequest": {
+            "type": "object",
+            "properties": {
+                "adjustments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/cart.AdjustmentItem"
+                    }
                 }
             }
         },
         "cart.AddToCartRequest": {
             "type": "object",
             "properties": {
-                "barang_id": {
-                    "type": "integer"
+                "kode_barang": {
+                    "description": "✅ Ganti dari BarangID",
+                    "type": "string"
                 },
                 "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "cart.AdjustmentItem": {
+            "type": "object",
+            "properties": {
+                "accepted_qty": {
+                    "type": "integer"
+                },
+                "cart_item_id": {
                     "type": "integer"
                 }
             }
