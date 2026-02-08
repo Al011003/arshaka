@@ -32,6 +32,7 @@ type BarangRepository interface {
 	IsActiveByKode(kode string) (bool, error)
 
 	GetIDByKode(kode string) (uint, error)
+	FindSimilarBarang(kategori, merk string, excludeBarangID uint, limit int, nama string) ([]model.Barang, error)
 }
 
 type barangRepository struct {
@@ -236,4 +237,70 @@ func (r *barangRepository) GetIDByKode(kode string) (uint, error) {
 		Error
 
 	return id, err
+}
+
+func (r *barangRepository) FindSimilarBarang(
+	kategori string,
+	merk string,
+	excludeBarangID uint,
+	limit int,
+	nama string, // 🔥 TAMBAH parameter nama
+) ([]model.Barang, error) {
+	var barangs []model.Barang
+
+	// 1️⃣ Prioritas 1: Nama mirip (LIKE) + Kategori sama + Merk sama
+	if kategori != "" && merk != "" && nama != "" {
+		err := r.db.
+			Where("status = ?", "aktif").
+			Where("id != ?", excludeBarangID).
+			Where("nama LIKE ? AND kategori = ? AND merk = ?", "%"+nama+"%", kategori, merk).
+			Order("created_at DESC").
+			Limit(limit).
+			Find(&barangs).Error
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(barangs) >= limit {
+			return barangs, nil
+		}
+	}
+
+	// 2️⃣ Prioritas 2: Nama mirip + Kategori sama + Merk beda
+	if kategori != "" && nama != "" && len(barangs) < limit {
+		var additionalBarangs []model.Barang
+		remaining := limit - len(barangs)
+
+		existingIDs := make([]uint, len(barangs))
+		for i, b := range barangs {
+			existingIDs[i] = b.ID
+		}
+
+		query := r.db.
+			Where("status = ?", "aktif").
+			Where("id != ?", excludeBarangID).
+			Where("nama LIKE ? AND kategori = ?", "%"+nama+"%", kategori)
+
+		if merk != "" {
+			query = query.Where("merk != ?", merk)
+		}
+
+		if len(existingIDs) > 0 {
+			query = query.Where("id NOT IN ?", existingIDs)
+		}
+
+		err := query.
+			Order("created_at DESC").
+			Limit(remaining).
+			Find(&additionalBarangs).Error
+
+		if err != nil {
+			return nil, err
+		}
+
+		barangs = append(barangs, additionalBarangs...)
+	}
+
+	return barangs, nil
 }

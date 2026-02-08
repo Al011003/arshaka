@@ -1,4 +1,3 @@
-// model/loan.go
 package model
 
 import (
@@ -7,6 +6,87 @@ import (
 	"gorm.io/gorm"
 )
 
+//
+// ==========================
+// Loan Decision Status (ADMIN)
+// ==========================
+//
+const (
+	LoanStatusPending  = "PENDING"
+	LoanStatusApproved = "APPROVED"
+	LoanStatusRejected = "REJECTED"
+)
+
+var LoanStatusEnum = []string{
+	LoanStatusPending,
+	LoanStatusApproved,
+	LoanStatusRejected,
+}
+
+//
+// ==========================
+// Loan Flow Status (OPERATIONAL)
+// ==========================
+//
+const (
+	LoanFlowRequested = "REQUESTED" // user submit
+	LoanFlowRevision  = "REVISION"  // admin minta revisi
+	LoanFlowReady     = "READY"     // units di-reserve
+	LoanFlowTaken     = "TAKEN"     // barang diambil
+	LoanFlowFinished  = "FINISHED"  // dikembalikan
+)
+
+var LoanFlowEnum = []string{
+	LoanFlowRequested,
+	LoanFlowRevision,
+	LoanFlowReady,
+	LoanFlowTaken,
+	LoanFlowFinished,
+}
+
+//
+// ==========================
+// Loan Item Status
+// ==========================
+//
+const (
+	LoanItemStatusRequested = "REQUESTED"
+	LoanItemStatusReady     = "READY"
+	LoanItemStatusBorrowed  = "BORROWED"
+	LoanItemStatusReturned  = "RETURNED"
+	LoanItemStatusRejected  = "REJECTED"
+)
+
+var LoanItemStatusEnum = []string{
+	LoanItemStatusRequested,
+	LoanItemStatusReady,
+	LoanItemStatusBorrowed,
+	LoanItemStatusReturned,
+	LoanItemStatusRejected,
+}
+
+//
+// ==========================
+// History Actor Role
+// ==========================
+//
+const (
+	HistoryRoleAdmin  = "ADMIN"
+	HistoryRoleUser   = "USER"
+	HistoryRoleSystem = "SYSTEM"
+)
+
+var HistoryRoleEnum = []string{
+	HistoryRoleAdmin,
+	HistoryRoleUser,
+	HistoryRoleSystem,
+}
+
+//
+// ==========================
+// Loan
+// ==========================
+//
 type Loan struct {
 	ID     uint `json:"id" gorm:"primaryKey"`
 	UserID uint `json:"user_id" gorm:"not null;index"`
@@ -14,22 +94,13 @@ type Loan struct {
 	// Identifier
 	LoanCode string `json:"loan_code" gorm:"type:varchar(30);uniqueIndex"`
 
-	// Decision Status (ADMIN)
-	// PENDING  -> belum diputuskan / revisi
-	// APPROVED -> disetujui admin
-	// REJECTED -> ditolak final
-	LoanStatus string `json:"loan_status" gorm:"type:enum('PENDING','APPROVED','REJECTED');default:'PENDING'"`
+	// Decision (ADMIN)
+	LoanStatus string `json:"loan_status" gorm:"type:varchar(20);not null;default:'PENDING'"`
 
-	// Alasan reject (WAJIB kalau REJECTED)
 	RejectReason *string `json:"reject_reason" gorm:"type:text"`
 
-	// Flow Status (OPERASIONAL)
-	// REQUESTED -> user submit
-	// REVISION  -> perlu perbaikan user
-	// READY     -> units sudah di-reserve
-	// TAKEN     -> barang diambil
-	// FINISHED  -> dikembalikan
-	LoanFlowStatus string `json:"loan_flow_status" gorm:"type:enum('REQUESTED','REVISION','READY','TAKEN','FINISHED');default:'REQUESTED'"`
+	// Operational Flow
+	LoanFlowStatus string `json:"loan_flow_status" gorm:"type:varchar(20);not null;default:'REQUESTED'"`
 
 	// Date Range
 	StartDate time.Time `json:"start_date" gorm:"not null;index"`
@@ -38,12 +109,12 @@ type Loan struct {
 	// Metadata
 	Reason string `json:"reason" gorm:"type:text"`
 
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	// Relations
-	User      *User      `gorm:"foreignKey:UserID" json:"user,omitempty"` // ✅ TAMBAH INI
+	User      *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	LoanItems []LoanItem `gorm:"foreignKey:LoanID;constraint:OnDelete:CASCADE" json:"loan_items,omitempty"`
 }
 
@@ -51,39 +122,39 @@ func (Loan) TableName() string {
 	return "loans"
 }
 
+//
+// ==========================
+// Loan Item
+// ==========================
+//
 type LoanItem struct {
 	ID       uint `json:"id" gorm:"primaryKey"`
 	LoanID   uint `json:"loan_id" gorm:"not null;index"`
 	BarangID uint `json:"barang_id" gorm:"not null;index"`
 
-	// ❌ REMOVE: Quantity (diganti jadi count AssignedUnits)
-	// Quantity int `json:"quantity" gorm:"not null"`
+	Status string `json:"status" gorm:"type:varchar(20);not null;default:'REQUESTED'"`
 
-	// Status per item
-	// REQUESTED -> ikut loan
-	// READY     -> units di-reserve
-	// BORROWED  -> sudah diambil
-	// RETURNED  -> dikembalikan
-	// REJECTED  -> item ditolak (parsial)
-	Status string `json:"status" gorm:"type:enum('REQUESTED','READY','BORROWED','RETURNED','REJECTED');default:'REQUESTED'"`
-
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 
 	// Relations
 	Loan          *Loan        `gorm:"foreignKey:LoanID" json:"loan,omitempty"`
 	Barang        *Barang      `gorm:"foreignKey:BarangID" json:"barang,omitempty"`
-	AssignedUnits []BarangUnit `gorm:"many2many:loan_item_units;" json:"assigned_units,omitempty"` // ✅ RENAME dari Units
+	AssignedUnits []BarangUnit `gorm:"many2many:loan_item_units;joinForeignKey:LoanItemID;joinReferences:UnitID" json:"assigned_units,omitempty"`
 }
 
 func (LoanItem) TableName() string {
 	return "loan_items"
 }
 
-// ✅ Junction table untuk many-to-many
+//
+// ==========================
+// Junction Table (LoanItem <-> Unit)
+// ==========================
+//
 type LoanItemUnit struct {
-	LoanItemID uint      `gorm:"primaryKey"`
-	UnitID     uint      `gorm:"primaryKey"`
+	LoanItemID uint      `gorm:"primaryKey;autoIncrement:false;index:idx_loan_unit,unique,priority:1"`
+	UnitID     uint      `gorm:"primaryKey;autoIncrement:false;index:idx_loan_unit,unique,priority:2"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -91,7 +162,11 @@ func (LoanItemUnit) TableName() string {
 	return "loan_item_units"
 }
 
-// ✅ HISTORY MODELS (OPTIONAL tapi RECOMMENDED)
+//
+// ==========================
+// Loan Status History (DECISION)
+// ==========================
+//
 type LoanStatusHistory struct {
 	ID     uint `json:"id" gorm:"primaryKey"`
 	LoanID uint `json:"loan_id" gorm:"not null;index"`
@@ -100,11 +175,11 @@ type LoanStatusHistory struct {
 	ToStatus   string  `json:"to_status"`
 
 	ChangedBy     uint   `json:"changed_by"`
-	ChangedByRole string `json:"changed_by_role" gorm:"type:enum('ADMIN','USER','SYSTEM')"`
+	ChangedByRole string `json:"changed_by_role" gorm:"type:varchar(10);not null"`
 
 	Note *string `json:"note,omitempty" gorm:"type:text"`
 
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time
 
 	Loan *Loan `gorm:"foreignKey:LoanID" json:"loan,omitempty"`
 }
@@ -113,19 +188,24 @@ func (LoanStatusHistory) TableName() string {
 	return "loan_status_history"
 }
 
+//
+// ==========================
+// Loan Flow History (OPERATIONAL)
+// ==========================
+//
 type LoanFlowHistory struct {
 	ID     uint `json:"id" gorm:"primaryKey"`
 	LoanID uint `json:"loan_id" gorm:"not null;index"`
 
-	FromFlow *string `json:"from_flow"`
-	ToFlow   string  `json:"to_flow" gorm:"not null"`
+	FromFlow *string `json:"from_flow" gorm:"type:varchar(20)"`
+	ToFlow   string  `json:"to_flow" gorm:"type:varchar(20);not null"`
 
-	ChangedBy     uint   `json:"changed_by"`
-	ChangedByRole string `json:"changed_by_role" gorm:"type:enum('ADMIN','USER','SYSTEM')"`
+	TriggeredBy     uint   `json:"triggered_by"`
+	TriggeredByRole string `json:"triggered_by_role" gorm:"type:varchar(10);not null"`
 
-	Note *string `json:"note,omitempty" gorm:"type:text"`
+	Note string `json:"note,omitempty" gorm:"type:text"`
 
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time
 
 	Loan *Loan `gorm:"foreignKey:LoanID" json:"loan,omitempty"`
 }

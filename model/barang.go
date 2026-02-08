@@ -22,6 +22,7 @@ const (
 	UnitStatusSiapTerbatas        = "siap_terbatas"
 	UnitStatusMaintenanceRequired = "maintenance_required"
 	UnitStatusNonAktif            = "nonaktif"
+	UnitStatusReserved = "reserved"
 )
 
 // Unit Kondisi
@@ -140,6 +141,8 @@ type BarangUnit struct {
 
 	Barang   Barang           `gorm:"foreignKey:BarangID"`
 	Komponen []BarangKomponen `gorm:"foreignKey:BarangUnitID"`
+
+	LoanItems []LoanItem `gorm:"many2many:loan_item_units; joinForeignKey:UnitID; joinReferences:LoanItemID"`
 }
 
 func (BarangUnit) TableName() string {

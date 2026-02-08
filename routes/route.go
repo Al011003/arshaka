@@ -7,7 +7,7 @@ import (
 	BarangHandler "backend/handler/barang"
 	CartHandler "backend/handler/cart"
 	DeviceHandler "backend/handler/device_token"
-	LoanHandler "backend/handler/loan"
+	loanHandler "backend/handler/loan"
 	DataHandler "backend/handler/masterdata"
 	superAdminHandler "backend/handler/superadmin"
 	UserHandler "backend/handler/user"
@@ -56,7 +56,8 @@ func SetupRouter(
 	
 	cartHandler *CartHandler.CartHandler,
 
-	loanUserHandler *LoanHandler.LoanUserHandler,
+	loanUserHandler *loanHandler.LoanUserHandler,
+	loanAdminHandler *loanHandler.LoanAdminHandler,
 
 ) *gin.Engine {
 	r := gin.Default()
@@ -111,13 +112,16 @@ func SetupRouter(
 		cart.POST("/acc", cartHandler.AcceptSuggestion)
 
 	userLoan := userRoute.Group("/loan")
-		userLoan.POST("", loanUserHandler.Create)
-		userLoan.PUT("/:loan_code", loanUserHandler.UpdateHeader)
-		userLoan.PUT("/:loan_code/items", loanUserHandler.UpdateItems)
-		userLoan.DELETE("/:loan_code", loanUserHandler.Cancel)
+		// Existing routes
+		userLoan.POST("", loanUserHandler.Create)                    // Create loan (checkout cart) ok
+		userLoan.GET("", loanUserHandler.GetMyLoans)                 // Get my loans ok
+		userLoan.GET("/:loan_code", loanUserHandler.GetDetail)       // Get loan detail ok
+		userLoan.PUT("/:loan_code", loanUserHandler.UpdateHeader)    // Update loan header (tanggal, reason) 
+		userLoan.PUT("/:loan_code/items", loanUserHandler.UpdateItems) // Update loan items
+		userLoan.DELETE("/:loan_code", loanUserHandler.Cancel)       // Cancel loan
 
-		userLoan.GET("", loanUserHandler.GetMyLoans)
-		userLoan.GET("/:loan_code", loanUserHandler.GetDetail)    
+		// 🔥 NEW: Check availability endpoint
+		userLoan.POST("/check-availability", loanUserHandler.CheckAvailability)  
 	
 	
     
@@ -185,6 +189,22 @@ func SetupRouter(
 			komponen.PUT("/:id", barangKomponenHandler.Update)
 			komponen.DELETE("/:id", barangKomponenHandler.Delete)
 
+		loanAdmin := adminRoute.Group("/loan")
+
+		loanAdmin.GET("", loanAdminHandler.GetAllLoans)
+		
+		// Get loan detail
+		loanAdmin.GET("/:loan_code", loanAdminHandler.GetLoanDetail)
+		
+		// Approval & Rejection
+		loanAdmin.POST("/:loan_code/approve", loanAdminHandler.ApproveLoan)
+		loanAdmin.POST("/:loan_code/reject", loanAdminHandler.RejectLoan)
+		loanAdmin.POST("/:loan_code/revision", loanAdminHandler.RequestRevision)
+		
+		// Flow Management
+		loanAdmin.POST("/:loan_code/ready", loanAdminHandler.MarkAsReady)
+		loanAdmin.POST("/:loan_code/taken", loanAdminHandler.MarkAsTaken)
+		loanAdmin.POST("/:loan_code/returned", loanAdminHandler.MarkAsReturned)
 
 
 	superAdminRoute := mainRoute.Group("/super-admin")

@@ -74,6 +74,7 @@ func NewApp() (*App, error) {
     &model.CartItem{},
 	&model.Loan{},
 	&model.LoanItem{},
+	&model.LoanItemUnit{},
 	&model.LoanFlowHistory{},
 	&model.LoanStatusHistory{},
 	&model.BarangUnit{},
@@ -134,7 +135,7 @@ func NewApp() (*App, error) {
 	//device
 	deviceTokenUC := deviceUC.NewSaveDeviceTokenUC(deviceRepo)
 	//barang
-	barangCrudUC := barangUC.NewBarangUseCase(barangRepo, barangUnitRepo)
+	
 	barangPhotoUC := barangUC.NewBarangPhotoUsecase(barangRepo)
 	barangCheckUC := barangUC.NewAvailabilityUseCase(loanRepo, barangRepo, barangUnitRepo)
 	barangUnitUC := barangUC.NewBarangUnitUseCase( barangUnitRepo, barangRepo, barangKomponenRepo)
@@ -143,7 +144,8 @@ func NewApp() (*App, error) {
 	userCartUC := cartUC.NewCartUsecase(cartRepo, barangRepo, barangUnitRepo)
 	//loan
 	userLoanUC := loanUC.NewLoanUserUsecase(loanRepo, cartRepo, barangRepo, barangUnitRepo,  loanStatusRepo, loanFlowStatusRepo)
-
+	adminLoanUC := loanUC.NewLoanAdminUsecase(loanRepo, barangRepo, barangUnitRepo, loanStatusRepo, loanFlowStatusRepo)
+	barangCrudUC := barangUC.NewBarangUseCase(barangRepo, barangUnitRepo, userLoanUC)
 
 
 	// Init Handlers
@@ -187,6 +189,7 @@ func NewApp() (*App, error) {
 	cartHandler := carthandelr.NewCartHandler(userCartUC)
 	//loan
 	loanUserHandler := loanhandler.NewLoanUserHandler(userLoanUC)
+	loanAdminHandler := loanhandler.NewLoanAdminHandler(adminLoanUC)
 
 
 
@@ -225,6 +228,7 @@ func NewApp() (*App, error) {
 		barangKomponenHandelr,
 		cartHandler,
 		loanUserHandler,
+		loanAdminHandler,
 	)
 
 	return &App{

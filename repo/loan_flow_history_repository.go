@@ -9,6 +9,7 @@ import (
 type LoanFlowHistoryRepository interface {
 	Create(history *model.LoanFlowHistory) error
 	GetByLoanID(loanID uint) ([]model.LoanFlowHistory, error)
+	BulkCreate(histories []model.LoanFlowHistory) error
 }
 
 type loanFlowHistoryRepository struct {
@@ -32,4 +33,11 @@ func (r *loanFlowHistoryRepository) GetByLoanID(loanID uint) ([]model.LoanFlowHi
 		Find(&histories).Error
 
 	return histories, err
+}
+
+func (r *loanFlowHistoryRepository) BulkCreate(histories []model.LoanFlowHistory) error {
+	if len(histories) == 0 {
+		return nil
+	}
+	return r.db.Create(&histories).Error
 }

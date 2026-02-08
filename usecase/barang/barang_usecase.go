@@ -6,6 +6,7 @@ import (
 	response "backend/dto/response/common"
 	"backend/model"
 	"backend/repo"
+	usecase "backend/usecase/loan"
 	"errors"
 	"fmt"
 )
@@ -21,18 +22,25 @@ type BarangUseCase interface {
 	SetNonAktif(kode string) error // ← NEW
 	SetAktif(kode string) error    // ← NEW (optional, untuk reactivate)
 	CheckAndSuggestBarangStatus(kode string) (*responseBarang.BarangStatusSuggestion, error)
+	UpdateStatus(barangID uint, newStatus string, adminID uint) error
 }
 
 type barangUseCase struct {
 	barangRepo repo.BarangRepository
 	unitRepo   repo.BarangUnitRepository
+	loanUsecase usecase.LoanUserUsecase
 }
 
 func NewBarangUseCase(
 	barangRepo repo.BarangRepository,
 	unitRepo repo.BarangUnitRepository,
+	loanUsecase usecase.LoanUserUsecase,
 ) BarangUseCase {
-	return &barangUseCase{barangRepo, unitRepo}
+	return &barangUseCase{
+		barangRepo:  barangRepo,
+		unitRepo:    unitRepo,
+		loanUsecase: loanUsecase,
+	}
 }
 
 func (u *barangUseCase) GetBarangStatsByKode(kode string) (*responseBarang.BarangStatsResponse, error) {
@@ -316,6 +324,51 @@ func (u *barangUseCase) CheckAndSuggestBarangStatus(kode string) (*responseBaran
 		ShouldChange:    shouldChange,
 	}, nil
 }
+
+func (u *barangUseCase) UpdateStatus(
+	barangID uint,
+	newStatus string,
+	adminID uint,
+) error {
+
+	// 1. Get barang
+	barang, err := u.barangRepo.FindByID(barangID)
+	if err != nil {
+		return err
+	}
+
+	oldStatus := barang.Status
+
+	// 2. Update status barang
+	barang.Status = newStatus
+	if err := u.barangRepo.Update(barang); err != nil {
+		return err
+	}
+
+	// 3. Update units status
+	if newStatus == "nonaktif" {
+		// Set all units to nonaktif
+		if err := u.unitRepo.SetAllStatusByBarangID(barangID, "nonaktif"); err != nil {
+			return err
+		}
+
+		// 🔥 AUTO-REVISION: Move semua active loans ke REVISION
+		if err := u.loanUsecase.MoveLoansToRevision(barangID, adminID); err != nil {
+			// Log error tapi gak return, biar update status tetap jalan
+			// TODO: Add proper logging
+			_ = err
+		}
+
+	} else if newStatus == "aktif" && oldStatus == "nonaktif" {
+		// Reactivate units (auto-compute status berdasarkan komponen)
+		if err := u.unitRepo.ReactivateAllByBarangID(barangID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 //
 // ================= MAPPER =================
 //
@@ -357,3 +410,4 @@ func MapBarangToDetailResponse(
 		Stats:     stats,
 	}
 }
+

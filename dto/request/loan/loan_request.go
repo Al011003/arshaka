@@ -63,6 +63,43 @@ return validation.ValidateStruct(r,
 }
 
 
+// CheckAvailabilityRequest - Request untuk check availability barang
+type CheckAvailabilityRequest struct {
+	KodeBarang string `json:"kode_barang" binding:"required"`
+	Quantity   int    `json:"quantity" binding:"required,min=1"`
+	StartDate  string `json:"start_date" binding:"required"`
+	EndDate    string `json:"end_date" binding:"required"`
 
+	ParsedStartDate time.Time `json:"-"`
+	ParsedEndDate   time.Time `json:"-"`
+}
+func (r *CheckAvailabilityRequest) BindAndValidate(c *gin.Context) error {
+	if err := c.ShouldBindJSON(r); err != nil {
+		return err
+	}
 
+	startDate, err := time.Parse("2006-01-02", r.StartDate)
+	if err != nil {
+		return errors.New("format start_date tidak valid, gunakan YYYY-MM-DD")
+	}
 
+	endDate, err := time.Parse("2006-01-02", r.EndDate)
+	if err != nil {
+		return errors.New("format end_date tidak valid, gunakan YYYY-MM-DD")
+	}
+
+	// ✅ FIX: end_date >= start_date (boleh sama)
+	if endDate.Before(startDate) {
+		return errors.New("end_date tidak boleh lebih awal dari start_date")
+	}
+
+	today := time.Now().Truncate(24 * time.Hour)
+	if startDate.Before(today) {
+		return errors.New("start_date tidak boleh di masa lalu")
+	}
+
+	r.ParsedStartDate = startDate
+	r.ParsedEndDate = endDate
+
+	return nil
+}

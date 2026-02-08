@@ -20,6 +20,12 @@ type LoanUserUsecase interface {
 	Cancel(loanCode string, userID uint) error
 	GetMyLoans(userID uint) ([]res.LoanListResponse, error)
 	GetDetail(loanCode string, userID uint) (*res.LoanDetailResponse, error)
+	
+	// 🔥 NEW: Check availability with gap rule & suggestions
+	CheckAvailabilityWithSuggestions(KodeBarang string, quantity int, startDate, endDate time.Time) (*res.AvailabilityCheckResponse, error)
+	
+	// 🔥 NEW: Auto-revision handler
+	MoveLoansToRevision(barangID uint, adminID uint) error
 }
 
 type loanUserUsecase struct {
@@ -72,45 +78,96 @@ func (u *loanUserUsecase) Create(
 		return nil, errors.New("cart kosong")
 	}
 
-	// 2. ✅ VALIDASI AVAILABILITY untuk SEMUA items
+	// 2. ✅ VALIDASI AVAILABILITY dengan GAP RULE + SUGGESTIONS
 	unavailableItems := []string{}
+	suggestions := []string{}
 
 	for _, ci := range cart.CartItems {
 		// Cek barang aktif
 		if ci.Barang.Status == "nonaktif" {
 			unavailableItems = append(unavailableItems,
 				fmt.Sprintf("%s: barang tidak aktif", ci.Barang.Nama))
+			
+			// 🔥 NEW: Cari rekomendasi barang serupa
+			similarBarangs, _ := u.barangRepo.FindSimilarBarang(
+				ci.Barang.Kategori,
+				ci.Barang.Merk,
+				ci.BarangID,
+				3, // max 3 rekomendasi
+				ci.Barang.Nama, 
+			)
+			
+			if len(similarBarangs) > 0 {
+				suggestionList := "Rekomendasi barang serupa: "
+				for i, sb := range similarBarangs {
+					if i > 0 {
+						suggestionList += ", "
+					}
+					suggestionList += fmt.Sprintf("%s (%s)", sb.Nama, sb.Merk)
+				}
+				suggestions = append(suggestions, suggestionList)
+			}
+			
 			continue
 		}
 
-		// ✅ Cek available units di tanggal tersebut
-		availableUnits, err := u.getAvailableUnitsInDateRange(
+		// ✅ Cek available units dengan GAP RULE
+		availCheck, err := u.checkAvailabilityWithGapRule(
 			ci.BarangID,
+			ci.Quantity,
 			req.ParsedStartDate,
 			req.ParsedEndDate,
 			nil, // excludeLoanID = nil (create baru)
+			
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		if len(availableUnits) < ci.Quantity {
-			unavailableItems = append(unavailableItems,
-				fmt.Sprintf("%s: hanya %d unit tersedia (diminta %d) di tanggal %s - %s",
-					ci.Barang.Nama,
-					len(availableUnits),
-					ci.Quantity,
-					req.ParsedStartDate.Format("02 Jan"),
-					req.ParsedEndDate.Format("02 Jan"),
-				))
+		if !availCheck.IsAvailable {
+			msg := fmt.Sprintf("%s: %s", ci.Barang.Nama, availCheck.Message)
+			unavailableItems = append(unavailableItems, msg)
+			
+			// Tambahkan suggestion kalau ada
+			if availCheck.SuggestedDate != nil {
+				suggestions = append(suggestions, 
+					fmt.Sprintf("💡 %s: Tersedia %d unit mulai %s",
+						ci.Barang.Nama,
+						ci.Quantity,
+						availCheck.SuggestedDate.Format("02 Jan 2006"),
+					))
+			}
+			
+			// 🔥 NEW: Cari barang alternatif
+			if len(availCheck.AlternativeBarangs) > 0 {
+				altList := fmt.Sprintf("Alternatif untuk %s: ", ci.Barang.Nama)
+				for i, alt := range availCheck.AlternativeBarangs {
+					if i > 0 {
+						altList += ", "
+					}
+					altList += fmt.Sprintf("%s (%s)", alt.BarangNama, alt.Merk)
+				}
+				suggestions = append(suggestions, altList)
+			}
 		}
 	}
 
-	// Kalau ada yang gak available, return error
+	// Kalau ada yang gak available, return error dengan suggestions
 	if len(unavailableItems) > 0 {
-		return nil, errors.New("Beberapa barang tidak tersedia:\n" +
-			fmt.Sprintf("%v", unavailableItems))
+		errorMsg := "Beberapa barang tidak tersedia:\n"
+		for _, item := range unavailableItems {
+			errorMsg += "- " + item + "\n"
+		}
+		
+		if len(suggestions) > 0 {
+			errorMsg += "\n📋 Saran:\n"
+			for _, sug := range suggestions {
+				errorMsg += "- " + sug + "\n"
+			}
+		}
+		
+		return nil, errors.New(errorMsg)
 	}
 
 	// 3. Create loan header
@@ -120,8 +177,8 @@ func (u *loanUserUsecase) Create(
 		StartDate:      req.ParsedStartDate,
 		EndDate:        req.ParsedEndDate,
 		Reason:         req.Reason,
-		LoanStatus:     "PENDING",
-		LoanFlowStatus: "REQUESTED",
+		LoanStatus:     model.LoanStatusPending,
+		LoanFlowStatus: model.LoanFlowRequested,
 	}
 
 	// 4. Create loan items (belum assign units)
@@ -129,7 +186,7 @@ func (u *loanUserUsecase) Create(
 	for _, ci := range cart.CartItems {
 		items = append(items, model.LoanItem{
 			BarangID: ci.BarangID,
-			Status:   "REQUESTED",
+			Status:   model.LoanItemStatusRequested,
 		})
 	}
 
@@ -163,9 +220,9 @@ func (u *loanUserUsecase) Create(
 	if err := u.statusHistRepo.Create(&model.LoanStatusHistory{
 		LoanID:        loan.ID,
 		FromStatus:    nil,
-		ToStatus:      "PENDING",
+		ToStatus:      model.LoanStatusPending,
 		ChangedBy:     userID,
-		ChangedByRole: "USER",
+		ChangedByRole: model.HistoryRoleUser,
 		Note:          stringPtr("Loan dibuat oleh user"),
 	}); err != nil {
 		return nil, err
@@ -173,12 +230,12 @@ func (u *loanUserUsecase) Create(
 
 	// 8. ✅ RECORD HISTORY: Flow awal
 	if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-		LoanID:        loan.ID,
-		FromFlow:      nil,
-		ToFlow:        "REQUESTED",
-		ChangedBy:     userID,
-		ChangedByRole: "USER",
-		Note:          stringPtr("Loan diajukan oleh user"),
+		LoanID:          loan.ID,
+		FromFlow:        nil,
+		ToFlow:          model.LoanFlowRequested,
+		TriggeredBy:     userID,
+		TriggeredByRole: model.HistoryRoleUser,
+		Note:            "Loan diajukan oleh user",
 	}); err != nil {
 		return nil, err
 	}
@@ -224,10 +281,13 @@ func (u *loanUserUsecase) UpdateHeader(
 	newEndDate := req.ParsedEndDate.Format("02 Jan 2006")
 	oldFlow := loan.LoanFlowStatus
 
-	// ✅ Validasi availability untuk tanggal baru
+	// ✅ Validasi availability dengan GAP RULE
 	for _, item := range loan.LoanItems {
-		availableUnits, err := u.getAvailableUnitsInDateRange(
+		currentQty := len(item.AssignedUnits)
+		
+		availCheck, err := u.checkAvailabilityWithGapRule(
 			item.BarangID,
+			currentQty,
 			req.ParsedStartDate,
 			req.ParsedEndDate,
 			&loan.ID, // exclude loan ini
@@ -237,14 +297,15 @@ func (u *loanUserUsecase) UpdateHeader(
 			return err
 		}
 
-		currentUnitCount := len(item.AssignedUnits)
-		if len(availableUnits) < currentUnitCount {
-			return fmt.Errorf(
-				"%s: hanya %d unit tersedia di tanggal baru (saat ini: %d unit)",
-				item.Barang.Nama,
-				len(availableUnits),
-				currentUnitCount,
-			)
+		if !availCheck.IsAvailable {
+			errorMsg := fmt.Sprintf("%s: %s", item.Barang.Nama, availCheck.Message)
+			
+			if availCheck.SuggestedDate != nil {
+				errorMsg += fmt.Sprintf(" (tersedia mulai %s)", 
+					availCheck.SuggestedDate.Format("02 Jan 2006"))
+			}
+			
+			return errors.New(errorMsg)
 		}
 	}
 
@@ -262,12 +323,12 @@ func (u *loanUserUsecase) UpdateHeader(
 		oldStartDate, oldEndDate, newStartDate, newEndDate)
 
 	if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-		LoanID:        loan.ID,
-		FromFlow:      &oldFlow,
-		ToFlow:        loan.LoanFlowStatus,
-		ChangedBy:     userID,
-		ChangedByRole: "USER",
-		Note:          stringPtr(note),
+		LoanID:          loan.ID,
+		FromFlow:        &oldFlow,
+		ToFlow:          loan.LoanFlowStatus,
+		TriggeredBy:     userID,
+		TriggeredByRole: model.HistoryRoleUser,
+		Note:            note,
 	}); err != nil {
 		return err
 	}
@@ -317,9 +378,10 @@ func (u *loanUserUsecase) UpdateItems(
 				return errors.New("barang sudah ada di loan")
 			}
 
-			// ✅ Cek availability
-			availableUnits, err := u.getAvailableUnitsInDateRange(
+			// ✅ Cek availability dengan GAP RULE
+			availCheck, err := u.checkAvailabilityWithGapRule(
 				item.BarangID,
+				item.Quantity,
 				loan.StartDate,
 				loan.EndDate,
 				&loan.ID,
@@ -329,19 +391,30 @@ func (u *loanUserUsecase) UpdateItems(
 				return err
 			}
 
-			if len(availableUnits) < item.Quantity {
-				return fmt.Errorf(
-					"hanya %d unit tersedia (diminta %d)",
-					len(availableUnits),
-					item.Quantity,
-				)
+			if !availCheck.IsAvailable {
+				errorMsg := availCheck.Message
+				
+				if availCheck.SuggestedDate != nil {
+					errorMsg += fmt.Sprintf(" (tersedia mulai %s)", 
+						availCheck.SuggestedDate.Format("02 Jan 2006"))
+				}
+				
+				return errors.New(errorMsg)
 			}
+
+			// Get available units
+			availableUnits, _ := u.getAvailableUnitsInDateRange(
+				item.BarangID,
+				loan.StartDate,
+				loan.EndDate,
+				&loan.ID,
+			)
 
 			// Create loan item
 			newItem := &model.LoanItem{
 				LoanID:   loan.ID,
 				BarangID: item.BarangID,
-				Status:   "REQUESTED",
+				Status:   model.LoanItemStatusRequested,
 			}
 
 			if err := u.loanRepo.CreateLoanItem(newItem); err != nil {
@@ -364,12 +437,12 @@ func (u *loanUserUsecase) UpdateItems(
 			note := fmt.Sprintf("User menambah barang: %s (%d unit)", barang.Nama, item.Quantity)
 
 			if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-				LoanID:        loan.ID,
-				FromFlow:      &oldFlow,
-				ToFlow:        loan.LoanFlowStatus,
-				ChangedBy:     userID,
-				ChangedByRole: "USER",
-				Note:          stringPtr(note),
+				LoanID:          loan.ID,
+				FromFlow:        &oldFlow,
+				ToFlow:          loan.LoanFlowStatus,
+				TriggeredBy:     userID,
+				TriggeredByRole: model.HistoryRoleUser,
+				Note:            note,
 			}); err != nil {
 				return err
 			}
@@ -384,9 +457,10 @@ func (u *loanUserUsecase) UpdateItems(
 			oldQuantity := len(li.AssignedUnits)
 			oldFlow := loan.LoanFlowStatus
 
-			// ✅ Cek availability
-			availableUnits, err := u.getAvailableUnitsInDateRange(
+			// ✅ Cek availability dengan GAP RULE
+			availCheck, err := u.checkAvailabilityWithGapRule(
 				item.BarangID,
+				item.Quantity,
 				loan.StartDate,
 				loan.EndDate,
 				&loan.ID,
@@ -396,13 +470,24 @@ func (u *loanUserUsecase) UpdateItems(
 				return err
 			}
 
-			if len(availableUnits) < item.Quantity {
-				return fmt.Errorf(
-					"hanya %d unit tersedia (diminta %d)",
-					len(availableUnits),
-					item.Quantity,
-				)
+			if !availCheck.IsAvailable {
+				errorMsg := availCheck.Message
+				
+				if availCheck.SuggestedDate != nil {
+					errorMsg += fmt.Sprintf(" (tersedia mulai %s)", 
+						availCheck.SuggestedDate.Format("02 Jan 2006"))
+				}
+				
+				return errors.New(errorMsg)
 			}
+
+			// Get available units
+			availableUnits, _ := u.getAvailableUnitsInDateRange(
+				item.BarangID,
+				loan.StartDate,
+				loan.EndDate,
+				&loan.ID,
+			)
 
 			// ✅ Re-assign units
 			unitIDs := make([]uint, 0, item.Quantity)
@@ -419,12 +504,12 @@ func (u *loanUserUsecase) UpdateItems(
 				li.Barang.Nama, oldQuantity, item.Quantity)
 
 			if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-				LoanID:        loan.ID,
-				FromFlow:      &oldFlow,
-				ToFlow:        loan.LoanFlowStatus,
-				ChangedBy:     userID,
-				ChangedByRole: "USER",
-				Note:          stringPtr(note),
+				LoanID:          loan.ID,
+				FromFlow:        &oldFlow,
+				ToFlow:          loan.LoanFlowStatus,
+				TriggeredBy:     userID,
+				TriggeredByRole: model.HistoryRoleUser,
+				Note:            note,
 			}); err != nil {
 				return err
 			}
@@ -454,12 +539,12 @@ func (u *loanUserUsecase) UpdateItems(
 				li.Barang.Nama, oldQuantity)
 
 			if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-				LoanID:        loan.ID,
-				FromFlow:      &oldFlow,
-				ToFlow:        loan.LoanFlowStatus,
-				ChangedBy:     userID,
-				ChangedByRole: "USER",
-				Note:          stringPtr(note),
+				LoanID:          loan.ID,
+				FromFlow:        &oldFlow,
+				ToFlow:          loan.LoanFlowStatus,
+				TriggeredBy:     userID,
+				TriggeredByRole: model.HistoryRoleUser,
+				Note:            note,
 			}); err != nil {
 				return err
 			}
@@ -491,7 +576,7 @@ func (u *loanUserUsecase) Cancel(
 		return errors.New("akses ditolak")
 	}
 
-	if loan.LoanStatus != "PENDING" {
+	if loan.LoanStatus != model.LoanStatusPending {
 		return errors.New("loan tidak bisa dibatalkan")
 	}
 
@@ -508,9 +593,9 @@ func (u *loanUserUsecase) Cancel(
 	if err := u.statusHistRepo.Create(&model.LoanStatusHistory{
 		LoanID:        loan.ID,
 		FromStatus:    &oldStatus,
-		ToStatus:      "REJECTED",
+		ToStatus:      model.LoanStatusRejected,
 		ChangedBy:     userID,
-		ChangedByRole: "USER",
+		ChangedByRole: model.HistoryRoleUser,
 		Note:          stringPtr("Loan dibatalkan oleh user"),
 	}); err != nil {
 		return err
@@ -518,12 +603,12 @@ func (u *loanUserUsecase) Cancel(
 
 	// ✅ RECORD HISTORY: Cancel loan - Flow
 	if err := u.flowHistRepo.Create(&model.LoanFlowHistory{
-		LoanID:        loan.ID,
-		FromFlow:      &oldFlow,
-		ToFlow:        "REQUESTED", // tetap REQUESTED karena cancelled
-		ChangedBy:     userID,
-		ChangedByRole: "USER",
-		Note:          stringPtr("Loan dibatalkan oleh user"),
+		LoanID:          loan.ID,
+		FromFlow:        &oldFlow,
+		ToFlow:          model.LoanFlowRequested, // tetap REQUESTED karena cancelled
+		TriggeredBy:     userID,
+		TriggeredByRole: model.HistoryRoleUser,
+		Note:            "Loan dibatalkan oleh user",
 	}); err != nil {
 		return err
 	}
@@ -638,11 +723,32 @@ func (u *loanUserUsecase) GetDetail(
 
 //
 // =====================================================
+// 🔥 NEW: CHECK AVAILABILITY WITH SUGGESTIONS
+// =====================================================
+//
+func (u *loanUserUsecase) CheckAvailabilityWithSuggestions(
+	kodeBarang string,
+	quantity int,
+	startDate, endDate time.Time,
+) (*res.AvailabilityCheckResponse, error) {
+
+	// 1. Lookup barang ID by kode
+	barangID, err := u.barangRepo.GetIDByKode(kodeBarang)
+	if err != nil {
+		return nil, errors.New("barang tidak ditemukan")
+	}
+
+	// 2. Check availability
+	return u.checkAvailabilityWithGapRule(barangID, quantity, startDate, endDate, nil)
+}
+
+//
+// =====================================================
 // HELPER FUNCTIONS
 // =====================================================
 //
 
-// ✅ NEW: Get available units in date range
+// ✅ Get available units in date range
 func (u *loanUserUsecase) getAvailableUnitsInDateRange(
 	barangID uint,
 	startDate time.Time,
@@ -690,15 +796,127 @@ func (u *loanUserUsecase) getAvailableUnitsInDateRange(
 	return availableUnits, nil
 }
 
-// ✅ NEW: Check if loan editable by user
-func isEditable(flow string) bool {
-	return flow == "REQUESTED" || flow == "REVISION"
+// 🔥 NEW: Check availability dengan GAP 1 HARI RULE
+func (u *loanUserUsecase) checkAvailabilityWithGapRule(
+	barangID uint,
+	requestedQty int,
+	startDate time.Time,
+	endDate time.Time,
+	excludeLoanID *uint,
+) (*res.AvailabilityCheckResponse, error) {
+
+	// 1. Get available units NOW
+	availableNow, err := u.getAvailableUnitsInDateRange(
+		barangID,
+		startDate,
+		endDate,
+		excludeLoanID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	currentlyAvailable := len(availableNow)
+
+	// 2. Kalau available cukup → langsung OK
+	if currentlyAvailable >= requestedQty {
+		return &res.AvailabilityCheckResponse{
+			IsAvailable:    true,
+			AvailableCount: currentlyAvailable,
+			RequestedCount: requestedQty,
+			Message:        fmt.Sprintf("Tersedia %d unit", currentlyAvailable),
+		}, nil
+	}
+
+	// 3. Kalau kurang → cari upcoming returns (gap 1 hari rule)
+	barang, err := u.barangRepo.FindByID(barangID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get upcoming returns setelah startDate
+	upcomingReturns, err := u.loanRepo.GetUpcomingReturns(barangID, startDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cari tanggal earliest yang bisa kasih enough units
+	needed := requestedQty - currentlyAvailable
+	accumulated := 0
+	var suggestedDate *time.Time
+
+	for _, returnInfo := range upcomingReturns {
+		accumulated += returnInfo.UnitCount
+		
+		if accumulated >= needed {
+			// 🔥 GAP 1 HARI: endDate + 2 hari (1 hari gap)
+			suggested := returnInfo.EndDate.AddDate(0, 0, 2)
+			suggestedDate = &suggested
+			break
+		}
+	}
+
+	// 4. Build response dengan suggestions
+	response := &res.AvailabilityCheckResponse{
+		IsAvailable:    false,
+		AvailableCount: currentlyAvailable,
+		RequestedCount: requestedQty,
+		Message: fmt.Sprintf(
+			"Hanya %d unit tersedia (diminta %d) di tanggal %s - %s",
+			currentlyAvailable,
+			requestedQty,
+			startDate.Format("02 Jan"),
+			endDate.Format("02 Jan"),
+		),
+		SuggestedDate: suggestedDate,
+	}
+
+	// 5. 🔥 NEW: Cari barang alternatif (kategori sama, merk beda)
+	similarBarangs, _ := u.barangRepo.FindSimilarBarang(
+		barang.Kategori,
+		barang.Merk,
+		barangID,
+		3, // max 3 alternatif
+		barang.Nama, 
+	)
+
+	if len(similarBarangs) > 0 {
+		alternatives := make([]res.AlternativeBarang, 0)
+		
+		for _, sb := range similarBarangs {
+			// Check availability untuk barang alternatif ini
+			altAvail, _ := u.getAvailableUnitsInDateRange(
+				sb.ID,
+				startDate,
+				endDate,
+				nil,
+			)
+			
+			// Kalau ada yang available
+			if len(altAvail) > 0 {
+				alternatives = append(alternatives, res.AlternativeBarang{
+					BarangID:       sb.ID,
+					BarangKode:     sb.Kode,
+					BarangNama:     sb.Nama,
+					Merk:           sb.Merk,
+					Kategori:       sb.Kategori,
+					AvailableCount: len(altAvail),
+				})
+			}
+		}
+		
+		response.AlternativeBarangs = alternatives
+	}
+
+	return response, nil
 }
 
-// ✅ NEW: Helper untuk convert string ke pointer
-func stringPtr(s string) *string {
-	return &s
+// ✅ Check if loan editable by user
+func isEditable(flow string) bool {
+	return flow == model.LoanFlowRequested || flow == model.LoanFlowRevision
 }
+
 
 func generateLoanCode() string {
 	now := time.Now()
@@ -736,4 +954,66 @@ func toLoanResponse(loan *model.Loan) *res.LoanResponse {
 		Items:          items,
 		CreatedAt:      loan.CreatedAt,
 	}
+}
+
+//
+// =====================================================
+// 🔥 NEW: AUTO-REVISION HANDLER (dipanggil dari BarangUsecase)
+// =====================================================
+//
+
+// MoveLoansToRevision - dipanggil ketika barang di-nonaktifkan
+func (u *loanUserUsecase) MoveLoansToRevision(barangID uint, adminID uint) error {
+	// 1. Get all active loans yang punya barang ini
+	activeLoans, err := u.loanRepo.GetActiveLoansByBarangID(barangID)
+	if err != nil {
+		return err
+	}
+
+	if len(activeLoans) == 0 {
+		return nil // Gak ada loan aktif
+	}
+
+	// 2. Get barang info untuk history notes
+	barang, err := u.barangRepo.FindByID(barangID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Collect loan IDs
+	loanIDs := make([]uint, 0, len(activeLoans))
+	for _, loan := range activeLoans {
+		loanIDs = append(loanIDs, loan.ID)
+	}
+
+	// 4. Bulk update flow status ke REVISION
+	if err := u.loanRepo.BulkUpdateLoanFlow(loanIDs, model.LoanFlowRevision); err != nil {
+		return err
+	}
+
+	// 5. Create flow history untuk semua loans
+	histories := make([]model.LoanFlowHistory, 0, len(activeLoans))
+	
+	for _, loan := range activeLoans {
+		oldFlow := loan.LoanFlowStatus
+		
+		histories = append(histories, model.LoanFlowHistory{
+			LoanID:          loan.ID,
+			FromFlow:        &oldFlow,
+			ToFlow:          model.LoanFlowRevision,
+			TriggeredBy:     adminID,
+			TriggeredByRole: model.HistoryRoleAdmin,
+			Note:            fmt.Sprintf(
+				"Loan masuk revisi karena barang '%s' dinonaktifkan oleh admin",
+				barang.Nama,
+			),
+		})
+	}
+
+	// Bulk insert histories
+	if err := u.flowHistRepo.BulkCreate(histories); err != nil {
+		return err
+	}
+
+	return nil
 }
